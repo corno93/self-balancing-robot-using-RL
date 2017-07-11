@@ -1,3 +1,5 @@
 # Thesis
 
-Thesis supports github layout found in http://nvie.com/posts/a-successful-git-branching-model/
+This is the develop branch.
+All code will be worked on here until ready to be merged to master.
+
