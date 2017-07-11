@@ -1,0 +1,12 @@
+#qt creator
+build/
+*.user
+
+#ros
+bin/
+lib/
+msg_gen/
+srv_gen/
+cmake_install.cmake
+devel/
+
