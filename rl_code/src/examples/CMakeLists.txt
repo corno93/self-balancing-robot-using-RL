@@ -1,0 +1,2 @@
+add_executable(cliff_example cliff_example_main.cpp cliff_world.cpp)
+target_link_libraries(cliff_example rl_lib)
