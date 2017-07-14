@@ -128,7 +128,6 @@ char cliff_world::next_state(char action, char current_state, std::vector<bool> 
     }
 
     float probs = fabs((rand()/(float)(RAND_MAX + 1)));
-    std::cout<<"Random probs for moving to next state is "<<probs<<std::endl;
     char actual_action;
     for (int i = 0; i < ACTIONS; i ++)
     {

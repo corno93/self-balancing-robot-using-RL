@@ -18,13 +18,14 @@ q_learning::~q_learning()
 
 
 
-char q_learning::choose_action(char s, std::vector<bool> available_actions, std::vector<float> q_row)
+char q_learning::choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> q_row)
 {
     float random_num;
     int random_choice, random_action;
-    int max_q;
+    float max_q;
     std::vector<int> max_indexs;
     std::vector<int> true_max_actions, true_actions;
+    std::vector<float> q_row_true;
 
     //first remove all falses from list. do this by making new vector true_actions with elements representing indexs of avaliable actions
     for (int j = 0; j < available_actions.size(); j ++)
@@ -36,13 +37,13 @@ char q_learning::choose_action(char s, std::vector<bool> available_actions, std:
     }
 
     random_num = fabs((rand()/(float)(RAND_MAX + 1)));
-    std::cout<<"The random num for actions is "<<random_num<<std::endl;
+//    std::cout<<"The random num for actions is "<<random_num<<std::endl;
 
-    if (random_num < 0.3)//q_learning.epsilon)
+    if (random_num < epsilon)
     {
         //pick randomly:
-        random_choice = ((int)rand()%(true_actions.size()+1));
-        std::cout<<"The random choice for random actions is"<<random_choice<<std::endl;
+        random_choice = ((int)rand()%(true_actions.size()));
+   //     std::cout<<"The random choice for random actions is"<<random_choice<<std::endl;
         random_action = true_actions[random_choice];
         return random_action;
 
@@ -53,40 +54,33 @@ char q_learning::choose_action(char s, std::vector<bool> available_actions, std:
 
         //need to pick maximum true action..
 
-
-        //get max value. then get index's of all max elements
-        max_q = *std::max_element(q_row.begin(),q_row.end());
-        for (int i = 0; i < q_row.size(); i++)
+        //map true_action indexs to q_row
+        for (int i = 0; i < true_actions.size();i++)
         {
-            if (max_q == q_row[i])
+            q_row_true.push_back(q_row[true_actions[i]]);//get true q values
+        }
+
+        max_q = *std::max_element(q_row_true.begin(),q_row_true.end());
+
+        //check for multiple times if actions have true max value
+        for (int i = 0; i < q_row_true.size();i++)
+        {
+            if (max_q == q_row_true[i])
             {
                 max_indexs.push_back(i);
             }
         }
-        //ERROR - WHEN THE BEST VALUES ARE ALL FOR FALSE ACTIONS...
-        //check that indexs are a true action. insert true max index values into true_max_actions
-        for (int i = 0; i < max_indexs.size();i++)
-        {
-            if (available_actions[max_indexs[i]] == true)
-            {
-                true_max_actions.push_back(max_indexs[i]);
-            }
-        }
-        //randomly pick if there are more than one option
-        if (true_max_actions.size() == 0)
-        {
-            // order. then get idex of first
-        }
-        else if (true_max_actions.size() == 1)
-        {
-            return true_max_actions[0];
-        }
-        else if (true_max_actions.size() > 1)
-        {
 
-            random_choice = ((int)rand()%(true_max_actions.size()+1));
-            std::cout<<"Random choice for picking best action is "<<random_choice<<std::endl;
-            return true_max_actions[random_choice];
+        //randomly pick if there are more than one option
+        if (max_indexs.size() == 1)
+        {
+            return true_actions[max_indexs[0]];
+        }
+        else if (max_indexs.size() > 1)
+        {
+            random_choice = ((int)rand()%(max_indexs.size()));
+     //       std::cout<<"Random choice for picking best action is "<<random_choice<<std::endl;
+            return true_actions[max_indexs[random_choice]];
         }
     }
 

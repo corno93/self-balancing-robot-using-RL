@@ -15,7 +15,7 @@ public:
   //  std::vector<std::vector<float>> Q(5, std::vector<float>(5,0));
 
     char policy(std::vector<char>);
-    char virtual choose_action(char s, std::vector<bool> available_actions, std::vector<float> state_row) = 0;
+    char virtual choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> state_row) = 0;
 };
 
 #endif // REINFORCEMENT_LEARNING_H

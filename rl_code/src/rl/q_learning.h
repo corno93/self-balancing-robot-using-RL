@@ -12,7 +12,7 @@ public:
     q_learning();//float ep);
     ~q_learning();
 
-    char choose_action(char s, std::vector<bool> available_actions, std::vector<float> state_row);
+    char choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> state_row);
 
 
 };

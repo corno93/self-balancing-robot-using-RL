@@ -12,7 +12,7 @@ reinforcement_learning::~reinforcement_learning()
 
 }
 
-char reinforcement_learning::choose_action(char s, std::vector<bool> available_actions, std::vector<float> state_row)
+char reinforcement_learning::choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> state_row)
 {
 
 }

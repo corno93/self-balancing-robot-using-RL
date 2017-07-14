@@ -1,6 +1,7 @@
 #qt creator
 build/
 *.user
+*.autosave
 
 #ros
 bin/
