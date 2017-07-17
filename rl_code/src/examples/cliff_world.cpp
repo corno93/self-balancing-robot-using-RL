@@ -94,56 +94,40 @@ char cliff_world::take_action(char action, char current_state)
     return (current_state + delta_state);
 }
 
-char cliff_world::next_state(char action, char current_state, std::vector<bool> availiable_actions)
+char cliff_world::next_state(char action, char current_state, std::vector<bool> available_actions)
 {
     // return the next state. take into account noisy transition probabilities
-    //the chosen action will always have 70 % of been resulting in the correct state. the remaining
-    //percetange is divided equally between other available states...
+    //the chosen action will always have 80 % of resolving in the correct state. the remaining
+    //avaliable options are divided equally and are chosen randomly if a random number is less than 20%...
 
     //get amount of available actions
-    int num_availiable_actions;
-    num_availiable_actions = std::count(availiable_actions.begin(), availiable_actions.end(), true);
-    float probability_dist[ACTIONS];
-    char actual_next_state;
+    char noisey_idx,actual_next_state ;
+    std::vector<int> available_idx;
+    float next_state_probs;
 
-    //split probabilities. choose. calc next state based on choice
+    next_state_probs = fabs((rand()/(float)(RAND_MAX + 1)));    //random positive float between 0 and 1
 
-    for (int i = 0; i < ACTIONS; i++)
+    if (next_state_probs > 0.2)
     {
-        if (availiable_actions[i] == true)
-        {
-           if (i == action)
-           {
-               probability_dist[i] = 0.8;
-           }
-           else
-           {
-               probability_dist[i] = 0.2/(num_availiable_actions-1);
-           }
-        }
-        else
-        {
-            probability_dist[i] = 0;
-        }
+        //next state is not acted by noise
+        actual_next_state = cliff_world::take_action(action, current_state);
+        return actual_next_state;
     }
-
-    float probs = fabs((rand()/(float)(RAND_MAX + 1)));
-    char actual_action;
-    for (int i = 0; i < ACTIONS; i ++)
+    else
     {
-        if (probs <= probability_dist[i])
+        //next state is noisy. pick other actions randomly
+        noisey_idx = rand()%(available_actions.size());
+        for (int i = 0; i < available_actions.size()-1;i++)
         {
-            actual_action = i;
+            if (available_actions[i] == true)
+            {
+                available_idx.push_back(i);
+            }
         }
-        else
-        {
-            probs = probs - probability_dist[i];
-        }
+        action = available_idx[noisey_idx];
+        actual_next_state = cliff_world::take_action(action, current_state);
+        return actual_next_state;
     }
-
-    actual_next_state = cliff_world::take_action(actual_action, current_state);
-    return actual_next_state;
-
 }
 
 signed short int cliff_world::get_reward(char next_state)

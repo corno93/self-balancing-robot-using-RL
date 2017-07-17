@@ -36,14 +36,11 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
         }
     }
 
-    random_num = fabs((rand()/(float)(RAND_MAX + 1)));
-//    std::cout<<"The random num for actions is "<<random_num<<std::endl;
-
+    random_num = fabs((rand()/(float)(RAND_MAX + 1))); //produce random positive float between 0 and 1
     if (random_num < epsilon)
     {
         //pick randomly:
-        random_choice = ((int)rand()%(true_actions.size()));
-   //     std::cout<<"The random choice for random actions is"<<random_choice<<std::endl;
+        random_choice = rand()%(true_actions.size());   //produe random positive int between 0 and true_actions size
         random_action = true_actions[random_choice];
         return random_action;
 
@@ -78,7 +75,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
         }
         else if (max_indexs.size() > 1)
         {
-            random_choice = ((int)rand()%(max_indexs.size()));
+            random_choice = rand()%(max_indexs.size());
      //       std::cout<<"Random choice for picking best action is "<<random_choice<<std::endl;
             return true_actions[max_indexs[random_choice]];
         }

@@ -7,7 +7,7 @@
 #include <rl/reinforcement_learning.h>
 #include <rl/q_learning.h>
 
-#define MAX_EPISODE 1000
+#define MAX_EPISODE 5000
 
 using namespace std;
 
@@ -15,16 +15,19 @@ int main()
 {
     // create main variables
     signed short int time_step, reward;
-    unsigned int wins, loses, breakpoint=0;
+    unsigned int wins, loses, breakpoint=0, wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
     char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
     std::vector<bool> available_actions(4, false);
-    std::vector<float> state_row(4);
+    std::vector<float> q_row(4);
 
     // create object instances
     q_learning controller;
     cliff_world env;
 
+    srand(time(NULL));
+
+    // rl variabels (put in controller?)
     discount_factor = 0.3;
     alpha = 0.3;
     epsilon = 0.3;
@@ -35,8 +38,6 @@ int main()
 
     for (int episode = 0; episode < MAX_EPISODE; episode++)
     {
-      //  cout<<"episode number is: "<<episode<<endl;
-        // reset agent and world
 
         time_step = 0;
         current_state = 00;
@@ -45,20 +46,18 @@ int main()
 
         while(1)
         {
-         //   cout<<"time_step number is: "<< time_step <<endl;
-
             //get all legal actions based on state
             available_actions = env.available_actions(current_state);
 
             //choose action based on policy
             current_state_idx = env.get_state_index(current_state);
-            state_row = env.Q[current_state_idx];
-            action = controller.choose_action(epsilon, available_actions, state_row);
+            q_row = env.Q[current_state_idx];
+            action = controller.choose_action(epsilon, available_actions, q_row);
 
             //take action
-            next_state = env.take_action(action, current_state);
+            //next_state = env.take_action(action, current_state);
             //get next state. incorporates transition probs.
-          //  next_state = env.next_state(action, current_state, available_actions);
+            next_state = env.next_state(action, current_state, available_actions);
 
             //get reward
             reward = env.get_reward(next_state);
@@ -86,24 +85,33 @@ int main()
                 current_state = next_state;
             }
         }
-        if (episode % 10 == 0)
+        if (episode % 10 == 0 && episode > 1)
         {
             //print stats
-            cout<<"-------------------------"<<endl;
+            cout<<"-------------------------------------------"<<endl;
             cout<<"Episode number: "<<episode<<" | ";
             cout<<"Time step: "<<time_step<<" | ";
             cout<<"Wins: "<<wins<<" | ";
-            cout<<"Loses: "<<loses<<endl;
+            cout<<"Loses: "<<loses<<" | ";
+            cout<<"Epsilon: "<<epsilon<<endl;
             breakpoint++;
         }
-        //reduce exploration over time
-        if (episode % 30 == 0 && epsilon > .001)
+        //reduce exploration over time and when wins continually increase
+        if (episode % 30 == 0 && wins > wins_prev*1.75)
         {
-            epsilon-=0.05;
+            if (epsilon != 0)
+            {
+                epsilon-=0.05;
+                wins_prev = wins;
+            }
+            if (epsilon <= 0 || epsilon > 1)
+            {
+                epsilon = 0;
+            }
         }
-        if (epsilon < 0)
-        {
-            epsilon = 0.0001;
-        }
+     //   if (epsilon < 0 || epsilon > 1)
+      //  {
+      //      epsilon = 0;
+      //  }
     }
 }
