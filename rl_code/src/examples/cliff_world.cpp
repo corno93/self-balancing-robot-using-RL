@@ -3,7 +3,6 @@
 
 cliff_world::cliff_world()
     :Q(STATES, std::vector<float>(ACTIONS,0)) //create states rows and actions columns
-
 {
 
 }

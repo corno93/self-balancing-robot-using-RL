@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-#include "cliff_world.h"
+#include "two_wheeled.h"
 
 #include <rl/reinforcement_learning.h>
 #include <rl/q_learning.h>
@@ -15,7 +15,7 @@ int main()
 {
     // create main variables
     signed short int time_step, reward;
-    unsigned int wins, loses, wins_prev=0;
+    unsigned int wins, loses, breakpoint = 0,wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
     char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
     std::vector<bool> available_actions(4, false);
@@ -23,7 +23,7 @@ int main()
 
     // create object instances
     q_learning controller;
-    cliff_world env;
+    two_wheeled env;
 
     srand(time(NULL));//seed the randomizer
 
@@ -94,6 +94,7 @@ int main()
             cout<<"Wins: "<<wins<<" | ";
             cout<<"Loses: "<<loses<<" | ";
             cout<<"Epsilon: "<<epsilon<<endl;
+            breakpoint++;
         }
         //reduce exploration over time and when wins continually increase
         if (episode % 30 == 0 && wins > wins_prev*1.75)
@@ -109,3 +110,4 @@ int main()
         }
     }
 }
+
