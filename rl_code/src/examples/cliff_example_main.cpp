@@ -99,19 +99,14 @@ int main()
         //reduce exploration over time and when wins continually increase
         if (episode % 30 == 0 && wins > wins_prev*1.75)
         {
-            if (epsilon != 0)
+            if (epsilon > 0.06)//because c++ and floats are gay
             {
                 epsilon-=0.05;
-                wins_prev = wins;
             }
-            if (epsilon <= 0 || epsilon > 1)
+            else
             {
                 epsilon = 0;
             }
         }
-     //   if (epsilon < 0 || epsilon > 1)
-      //  {
-      //      epsilon = 0;
-      //  }
     }
 }
