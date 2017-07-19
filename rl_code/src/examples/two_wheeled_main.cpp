@@ -18,7 +18,7 @@ int main()
     unsigned int wins, loses, breakpoint = 0,wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
     char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
-    std::vector<bool> available_actions(4, false);
+    std::vector<bool> available_actions(6, false);
     std::vector<float> q_row(4);
 
     // create object instances
@@ -40,8 +40,8 @@ int main()
     {
 
         time_step = 0;
-        current_state = 00;
-        goal_state = 30;
+        current_state = 5;//start at 5 degs
+        //goal_state = 30;//will there be a 'goal' state?
 
 
         while(1)

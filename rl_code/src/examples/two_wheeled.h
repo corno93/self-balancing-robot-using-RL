@@ -8,7 +8,7 @@
 #include <iostream>
 #include <algorithm>
 
-#define STATES 6
+#define STATES 8
 #define ACTIONS 6
 
 class two_wheeled : public environment
