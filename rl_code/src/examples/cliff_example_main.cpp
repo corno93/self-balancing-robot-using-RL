@@ -55,9 +55,9 @@ int main()
             action = controller.choose_action(epsilon, available_actions, q_row);
 
             //take action
-            //next_state = env.take_action(action, current_state);
+            next_state = env.take_action(action, current_state);
             //get next state. incorporates transition probs.
-            next_state = env.next_state(action, current_state, available_actions);
+            //next_state = env.next_state(action, current_state, available_actions);
 
             //get reward
             reward = env.get_reward(next_state);

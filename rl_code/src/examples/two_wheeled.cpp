@@ -15,7 +15,7 @@ two_wheeled::~two_wheeled()
 
 std::vector<bool> two_wheeled::available_actions(char s)
 {
-    std::vector<bool> actions(4,false);
+    std::vector<bool> actions(ACTIONS,false);
     //available actions are those in the same half the state is
     if(s<=2)
     {
@@ -41,22 +41,22 @@ std::vector<bool> two_wheeled::available_actions(char s)
 char two_wheeled::take_action(char action, char current_state)
 {
     char delta_state;
-    if (action == 1)
+    if (action == 0)
     {
         delta_state = 30;
-    }else if (action == 2)
+    }else if (action == 1)
     {
         delta_state = 20;
-    }else if (action == 3)
+    }else if (action == 2)
     {
         delta_state = 10;
-    }else if (action == 4)
+    }else if (action == 3)
     {
         delta_state = -10;
-    }else if (action == 5)
+    }else if (action == 4)
     {
         delta_state = -20;
-    }else if (action == 6)
+    }else if (action == 5)
     {
         delta_state = -30;
     }
