@@ -1,42 +1,60 @@
-/*Copyright (C) 2008, Morgan Quigley and Willow Garage, Inc.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the names of Stanford University or Willow Garage, Inc. nor the names of its
- *     contributors may be used to endorse or promote products derived from
- *     this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 
-// %Tag(FULLTEXT)%
+
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include <stdio.h>
+#include <wiringSerial.h>
+#include <wiringPi.h>
 
-/**
- * This tutorial demonstrates simple receipt of messages over the ROS system.
- */
-// %Tag(CALLBACK)%
-void chatterCallback(const std_msgs::String::ConstPtr& msg)
+class Motors
 {
-  ROS_INFO("I heard: [%s]", msg->data.c_str());
+		//Replace type of message with message containing the encoder values
+		void encoder_callback(const std_msgs::String::ConstPtr& msg);
+	public:
+		//Ros Node Handle
+  		ros::NodeHandle n;
+		
+		//Motor Encoders
+		int m_left_encoder_value;
+		int m_right_encoder_value;
+
+		//Figure out what type is fd
+		some_type fd;
+};
+
+void Motors::encoder_callback(const std_msgs::String::ConstPtr& msg)
+{
+	//Need to include the encoder value in the message received
+	//m_right_encoder_value = msg.encoder_value;
+	//m_left_encoder_value = msg.encoder_value;
+	
+	ROS_INFO("I heard: [%s]", msg->data.c_str());
+	//Do not publish the serial in the callback!!
+	//serialPutChar(fd, int(msg->data.c_str()));
 }
-// %EndTag(CALLBACK)%
+
+
+void Motors::init()
+{
+	//Ros Init
+	ros::Subscriber sub = n.subscribe("encoder_topic", 1000, this->ecoder_callback);
+
+	//Serial Init
+/*	if ((fd = serialOpen("/dev/ttyS0",9600))<0)
+	{
+		ROS_INFO("Unable to open serial device");
+	}	
+	if (wiringPiSetup() == -1)
+	{
+		ROS_INFO("Unable to start wiringPi");
+	}
+*/
+}
+
+void Motors::write_serial_command()
+{
+	//Here you write to the serial
+}
 
 int main(int argc, char **argv)
 {
@@ -57,7 +75,7 @@ int main(int argc, char **argv)
    * The first NodeHandle constructed will fully initialize this node, and the last
    * NodeHandle destructed will close down the node.
    */
-  ros::NodeHandle n;
+  //TODO:Check where node handle should live, Roman thinks that it is in the class
 
   /**
    * The subscribe() call is how you tell ROS that you want to receive messages
@@ -75,17 +93,29 @@ int main(int argc, char **argv)
    * away the oldest ones.
    */
 
-  ros::Subscriber sub = n.subscribe("chatter", 1000, chatterCallback);
+  //TODO: Determine frequency that it writes.
+  ros::Rate loop_rate(10);
 
+
+  Motors motors;
+  motors.init();
   /**
-   * ros::spin() will enter a loop, pumping callbacks.  With this version, all
-   * callbacks will be called from within this thread (the main one).  ros::spin()
-   * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
+   * A count of how many messages we have sent. This is used to create
+   * a unique string for each message.
    */
-// %Tag(SPIN)%
-  ros::spin();
-// %EndTag(SPIN)%
+  int count = 0;
+  while (ros::ok())
+  {
+	motors.step();
+	motors.send_serial_command();
+    	ROS_INFO("%s", msg.data.c_str());
 
+	ros::spinOnce();
+
+	loop_rate.sleep();
+	++count;
+  }
   return 0;
 }
-// %EndTag(FULLTEXT)%
+
+
