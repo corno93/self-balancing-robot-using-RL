@@ -23,8 +23,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
     float random_num;
     int random_choice, random_action;
     float max_q;
-    std::vector<int> max_indexs;
-    std::vector<int> true_max_actions, true_actions;
+    std::vector<int> max_indexs, true_actions;
     std::vector<float> q_row_true;
 
     //first remove all falses from list. do this by making new vector true_actions with elements representing indexs of avaliable actions

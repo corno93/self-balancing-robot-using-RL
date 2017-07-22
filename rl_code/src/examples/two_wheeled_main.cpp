@@ -18,8 +18,8 @@ int main()
     unsigned int wins, loses, breakpoint = 0,wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
     char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
-    std::vector<bool> available_actions(4, false);
-    std::vector<float> q_row(4);
+    std::vector<bool> available_actions(ACTIONS, false);
+    std::vector<float> q_row(ACTIONS);
 
     // create object instances
     q_learning controller;
@@ -40,8 +40,8 @@ int main()
     {
 
         time_step = 0;
-        current_state = 00;
-        goal_state = 30;
+        current_state = 15;//start at 5 degs
+        //goal_state = 30;//will there be a 'goal' state?
 
 
         while(1)
@@ -69,12 +69,12 @@ int main()
             td_error = td_target - env.Q[current_state_idx][action];
             env.Q[current_state_idx][action]+= td_error*alpha;
 
-            if (reward == 1000)
+            if (reward == 100)
             {
                 wins++;
                 break;
             }
-            else if (reward == -1000)
+            else if (reward == -100)
             {
                 loses++;
                 break;
