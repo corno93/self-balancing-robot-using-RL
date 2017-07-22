@@ -119,7 +119,12 @@ catkin_package(
 include_directories(
  include
   ${catkin_INCLUDE_DIRS}
+  ${wiringPi_INCLUDE_DIRS}
 )
+
+#NO IDEA?!?!?!
+#FIND_LIBRARY(WIRINGPI_LIBRARY wiringPi /home/alex/Code/wiringPi)
+#find_library(wiringPi libwiringPi.so)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -156,8 +161,8 @@ target_link_libraries(motors_talker ${catkin_LIBRARIES})
 add_dependencies(motors_talker motors_generate_messages_cpp)
 
 add_executable(motors_listener src/motors_listener.cpp)
-target_link_libraries(motors_listener ${catkin_LIBRARIES})
-add_dependencies(motors_listener motors_generate_messages_cpp)
+target_link_libraries(motors_listener ${catkin_LIBRARIES} ${WIRINGPI_LIBRARY})
+add_dependencies(motors_listener motors_generate_messages_cpp wiringPi)
 
 
 

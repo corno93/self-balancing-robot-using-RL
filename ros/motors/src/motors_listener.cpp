@@ -8,21 +8,25 @@
 
 class Motors
 {
+
+	public:
 		//Replace type of message with message containing the encoder values
 		void encoder_callback(const std_msgs::String::ConstPtr& msg);
-	public:
+		void init();
+		void write_serial_command(char command);
+	
 		//Ros Node Handle
   		ros::NodeHandle n;
 		
 		//Motor Encoders
 		int m_left_encoder_value;
 		int m_right_encoder_value;
-
-		//Figure out what type is fd
-		some_type fd;
+		
+		//serialPutChar parameter
+		int fd;	
 };
 
-void Motors::encoder_callback(const std_msgs::String::ConstPtr& msg)
+/*void Motors::encoder_callback(const std_msgs::String::ConstPtr& msg)
 {
 	//Need to include the encoder value in the message received
 	//m_right_encoder_value = msg.encoder_value;
@@ -31,16 +35,23 @@ void Motors::encoder_callback(const std_msgs::String::ConstPtr& msg)
 	ROS_INFO("I heard: [%s]", msg->data.c_str());
 	//Do not publish the serial in the callback!!
 	//serialPutChar(fd, int(msg->data.c_str()));
-}
+}*/
+
+
+/*char command Motors::step()
+{
+	
+
+}*/
 
 
 void Motors::init()
 {
 	//Ros Init
-	ros::Subscriber sub = n.subscribe("encoder_topic", 1000, this->ecoder_callback);
+//	ros::Subscriber sub = n.subscribe("encoder_topic", 1000, this->ecoder_callback);
 
 	//Serial Init
-/*	if ((fd = serialOpen("/dev/ttyS0",9600))<0)
+	if ((fd = serialOpen("/dev/ttyS0",9600))<0)
 	{
 		ROS_INFO("Unable to open serial device");
 	}	
@@ -48,26 +59,18 @@ void Motors::init()
 	{
 		ROS_INFO("Unable to start wiringPi");
 	}
-*/
+
 }
 
-void Motors::write_serial_command()
+void Motors::write_serial_command(char command)
 {
-	//Here you write to the serial
+	fflush(stdout);
+	serialPutChar(fd, command);
+	
 }
 
 int main(int argc, char **argv)
 {
-  /**
-   * The ros::init() function needs to see argc and argv so that it can perform
-   * any ROS arguments and name remapping that were provided at the command line.
-   * For programmatic remappings you can use a different version of init() which takes
-   * remappings directly, but for most command-line programs, passing argc and argv is
-   * the easiest way to do it.  The third argument to init() is the name of the node.
-   *
-   * You must call one of the versions of ros::init() before using any other
-   * part of the ROS system.
-   */
   ros::init(argc, argv, "motors_listener");
 
   /**
@@ -99,21 +102,17 @@ int main(int argc, char **argv)
 
   Motors motors;
   motors.init();
-  /**
-   * A count of how many messages we have sent. This is used to create
-   * a unique string for each message.
-   */
-  int count = 0;
+  char command;
+  command = 20;
   while (ros::ok())
   {
-	motors.step();
-	motors.send_serial_command();
-    	ROS_INFO("%s", msg.data.c_str());
+//	command = motors.step();
+	motors.write_serial_command(command);
+  //  	ROS_INFO("%s", msg.data.c_str());
 
 	ros::spinOnce();
 
 	loop_rate.sleep();
-	++count;
   }
   return 0;
 }
