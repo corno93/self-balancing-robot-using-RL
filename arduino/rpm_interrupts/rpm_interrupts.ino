@@ -55,6 +55,8 @@ SabertoothSimplified ST;
 //INTERRUPT STUFF
 int RPM_m1 = 0;
 int timer1_counter;
+int RPM_m2 = 0;
+
 
 
 
@@ -152,7 +154,7 @@ void clearEncoderCount() {
   SPI.transfer(0x00);  // lowest order byte
   digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation 
   
-  delayMicroseconds(100);  // provides some breathing room between SPI conversations
+ // delayMicroseconds(100);  // provides some breathing room between SPI conversations
   
   // Set encoder1's current data register to center
   digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation  
@@ -170,7 +172,7 @@ void clearEncoderCount() {
   SPI.transfer(0x00);  // lowest order byte
   digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
 //  
-  delayMicroseconds(100);  // provides some breathing room between SPI conversations
+ // delayMicroseconds(100);  // provides some breathing room between SPI conversations
 //  
 //  // Set encoder2's current data register to center
   digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation  
@@ -203,6 +205,11 @@ ISR(TIMER1_OVF_vect)        // interrupt service routine
   RPM_m1 = (encoder1count*60)/1920;
   encoder1count = 0;
    Serial.print("RPM1: ");Serial.println(RPM_m1);
+
+     RPM_m2 = (encoder2count*60)/1920;
+  encoder2count = 0;
+   Serial.print("RPM2: ");Serial.println(RPM_m2);
+   
     clearEncoderCount();  Serial.println("Encoders Cleared...");
 
 
@@ -217,15 +224,18 @@ void setup() {
  initEncoders();       Serial.println("Encoders Initialized...");  
  clearEncoderCount();  Serial.println("Encoders Cleared...");
   timer1_interrupt_setup();
-  interrupts();             // enable all interrupts
 
 }
 
 void loop() {
- //delay(500);
-
- Serial1.write(90);  
  delay(100);
+   interrupts();             // enable all interrupts
+
+
+ Serial1.write(94);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
+ Serial1.write(222);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
+ //delay(100);
+
 
  
  // Retrieve current encoder counters
