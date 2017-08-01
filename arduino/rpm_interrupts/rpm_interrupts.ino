@@ -284,12 +284,13 @@ void setup() {
 
 void loop() {
 // delay(100);
+int a;
                 // enable all interrupts
 
 //  RPM_ref_m1 = 94;
-
- Serial1.write(63);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
- Serial1.write(180);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
+a = 1;
+ Serial1.write(a);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
+// Serial1.write(180);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
  //delay(100);
 interrupts();
 
