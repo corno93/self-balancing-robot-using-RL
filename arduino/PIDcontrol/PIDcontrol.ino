@@ -65,7 +65,8 @@ int RPM_ref_m1;
 int RPM_actual_m1;
 int integral;
 float KP = 1, KD = 1, KI = 1;
-int error_m1_prev = 0;
+float dt = 0.1, derivative;
+int error_prev = 0;
 
 
 
@@ -208,7 +209,9 @@ void timer1_interrupt_setup()
   
 }
 
-ISR(TIMER1_OVF_vect)        // interrupt service routine 
+
+//ISR FOR RPM CALC AND PID CONTROL
+ISR(TIMER1_OVF_vect)       
 {
   float error_kp, error_kd, error_ki, motor1_rpmcmd;
   int motor1_serialcmd;
@@ -227,25 +230,32 @@ ISR(TIMER1_OVF_vect)        // interrupt service routine
 
 if (PID)
   {
-    error_m1 = RPM_ref_m1 - RPM_actual_m1;
-    error_kp = KP*error_m1;
-    error_d = abs(error_m1 - error_m1_prev);
-    error_kd = KD*error_d;
-    integral += error_m1;
-    error_ki = KI*integral;
-    error_m1_prev = error_m1;
+    error_m1 = RPM_ref_m1 - RPM_actual_m1;  //get RPM error
+    
+    error_kp = KP*error_m1; //proportional
 
+    integral+=error_m1*dt;  //integral
+    error_ki = KI*integral;
+
+    derivative = (error_m1 - error_prev) / dt; //derivative (dt = 0.1 seconds)
+    error_kd = KD*derivative;
+
+    error_prev = error_m1;   //save next previous error
+
+    //debugging...
 //    Serial.print("The error is ");Serial.println(error_m1);
 //    Serial.print("The error derivative is ");Serial.println(error_d);
 //    Serial.print("The integral is ");Serial.println(integral);
 
-    motor1_rpmcmd = error_kp;// + error_ki + error_kd;
+    motor1_rpmcmd = error_kp;// + error_ki + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
 //   Serial.print("motor1_rpmcmd ");Serial.println(motor1_rpmcmd);
 
     motor1_serialcmd = M1_rpm_to_serial(motor1_rpmcmd);
     Serial1.write(motor1_serialcmd);
 
     Serial.print("motor1_serialcmd: ");Serial.println(motor1_serialcmd);
+
+
   }
   
 }
@@ -253,7 +263,7 @@ if (PID)
 int M1_rpm_to_serial(float rpm_cmd)
 {
   int serial_cmd;
-  serial_cmd = (rpm_cmd + 400.68)/6.3504;
+  serial_cmd = (rpm_cmd + 400.68)/6.3504;     //m1 eqn
   if (serial_cmd > 127)
   {
     serial_cmd = 127;
@@ -279,7 +289,6 @@ void timer3_interrupt_setup()
   TCNT3 = timer3_counter;   // preload timer
   TCCR3B |= (1 << CS12);    // 256 prescaler 
   TIMSK3 |= (1 << TOIE3);   // enable timer overflow interrupt
-  
 }
 
 ISR(TIMER3_OVF_vect)        // interrupt service routine 
@@ -322,10 +331,6 @@ interrupts();
 
  while(1)
  {
- // delay(100);
- //Serial1.write(127);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
- //Serial1.write(255);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
- // Retrieve current encoder counters
 
  
  } 
