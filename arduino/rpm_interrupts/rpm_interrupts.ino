@@ -55,10 +55,11 @@ SabertoothSimplified ST;
 
 //INTERRUPT STUFF
 int RPM_actual_m1 = 0;
-int timer1_counter;
+int timer4_counter;
 int timer3_counter;
 int RPM_actual_m2 = 0;
 boolean PID = false;
+int ISR3_counter = 0;
 
 
 
@@ -183,32 +184,33 @@ void clearEncoderCount() {
   digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
 }
 
-void timer1_interrupt_setup()
+void timer4_interrupt_setup()
 {
   // initialize timer1 
   noInterrupts();           // disable all interrupts
-  TCCR1A = 0;
-  TCCR1B = 0;
+  TCCR4A = 0;
+  TCCR4B = 0;
 
   // Set timer1_counter to the correct value for our interrupt interval
-  //timer1_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
-  //timer1_counter = 64286;   // preload timer 65536-16MHz/256/50Hz
-  timer1_counter = 58000;//3037;//3037;//3036;//59286;//3036;//58500;//3036;//62411;//3036;//59286;     // preload timer 65536-16MHz/256/10Hz
+  timer4_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
+//  timer1_counter = 64286;   // preload timer 65536-16MHz/256/50Hz
+//  timer1_counter = 58000;//3037;//3037;//3036;//59286;//3036;//58500;//3036;//62411;//3036;//59286;     // preload timer 65536-16MHz/256/10Hz
   //timer1_counter = 34286;   // preload timer 65536-16MHz/256/2Hz
   
-  TCNT1 = timer1_counter;   // preload timer
-  TCCR1B |= (1 << CS12);    // 256 prescaler 
-  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
+  TCNT4 = timer4_counter;   // preload timer
+  TCCR4B |= (1 << CS12);    // 256 prescaler 
+  TIMSK4 |= (1 << TOIE4);   // enable timer overflow interrupt
   
 }
 
-ISR(TIMER1_OVF_vect)        // interrupt service routine 
+ISR(TIMER4_OVF_vect)        // interrupt service routine 
 {
     // preload timer
-      TCNT1 = timer1_counter; 
+      TCNT4 = timer4_counter; 
+  Serial.println("int 4");
 
-  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
-
+ // digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
+/*
   RPM_actual_m1 = (encoder1count*600)/1920;
   encoder1count = 0;
    Serial.print("RPM1: ");Serial.println(RPM_actual_m1);
@@ -218,9 +220,8 @@ ISR(TIMER1_OVF_vect)        // interrupt service routine
    Serial.print("RPM2: ");Serial.println(RPM_actual_m2);
    
     clearEncoderCount();  Serial.println("Encoders Cleared...");
-  Serial.println("int 1");
 PID = true;
-
+*/
   
 }
 
@@ -232,9 +233,9 @@ void timer3_interrupt_setup()
   TCCR3B = 0;
 
   // Set timer1_counter to the correct value for our interrupt interval
-  //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
-  timer3_counter = 64286;   // preload timer 65536-16MHz/256/50Hz
-  //timer3_counter = 62411;   // preload timer 65536-16MHz/256/2Hz (results in 1 second interrupts)
+ // timer3_counter = 65223;   // preload timer 65536-16MHz/256/100Hz
+  //timer3_counter = 64286;   // preload timer 65536-16MHz/256/50Hz
+  timer3_counter = 65223;   // preload timer 65536-16MHz/256/2Hz (results in 1 second interrupts)
   
   TCNT3 = timer3_counter;   // preload timer
   TCCR3B |= (1 << CS12);    // 256 prescaler 
@@ -245,10 +246,44 @@ void timer3_interrupt_setup()
 ISR(TIMER3_OVF_vect)        // interrupt service routine 
 {
   TCNT3 = timer3_counter;   // preload timer
-  Serial.println("int 3");
-   encoder1count = readEncoder(1); 
+ // Serial.println("int 3");
+  encoder1count = readEncoder(1); 
+ // encoder2count = readEncoder(2);
+
+
+  ISR3_counter++;
+  if (ISR3_counter >=2)
+  {    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
+
+   // Serial.println("fake int 4");
+    ISR3_counter = 0;
+     RPM_actual_m1 = (encoder1count*6000)/1920;
+  encoder1count = 0;
+  // Serial.print("RPM1: ");
+   Serial.println(RPM_actual_m1);
+   clearEncoderCount(); // Serial.println("Encoders Cleared...");
+
+  }
+ /*encoder1count = readEncoder(1); 
  encoder2count = readEncoder(2);
  Serial.print("Enc1: "); Serial.println(encoder1count); Serial.print(" Enc2: "); Serial.println(encoder2count);
+*/
+ /*ISR3_counter++;
+ if (ISR3_counter >= 100)
+ {
+  ISR3_counter = 0;
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
+
+  RPM_actual_m1 = (encoder1count*600)/1920;
+  encoder1count = 0;
+   Serial.print("RPM1: ");Serial.println(RPM_actual_m1);
+
+     RPM_actual_m2 = (encoder2count*600)/1920;
+  encoder2count = 0;
+   Serial.print("RPM2: ");Serial.println(RPM_actual_m2);
+   
+    clearEncoderCount();  Serial.println("Encoders Cleared...");
+ }*/
 
 }
 
@@ -260,9 +295,9 @@ void setup() {
  initEncoders();       Serial.println("Encoders Initialized...");  
  clearEncoderCount();  Serial.println("Encoders Cleared...");
    pinMode(ledPin, OUTPUT);
-    timer3_interrupt_setup();
+    timer3_interrupt_setup(); //encoder reads
 
-  timer1_interrupt_setup();
+ // timer4_interrupt_setup(); //RPM calcs
 
 
 }
@@ -273,7 +308,7 @@ int a;
                 // enable all interrupts
 
 //  RPM_ref_m1 = 76;
-a = 71;
+a = 110;
  Serial1.write(a);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
 // Serial1.write(180);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
  //delay(100);
