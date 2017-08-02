@@ -249,22 +249,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine
    encoder1count = readEncoder(1); 
  encoder2count = readEncoder(2);
  Serial.print("Enc1: "); Serial.println(encoder1count); Serial.print(" Enc2: "); Serial.println(encoder2count);
-//PUT IN PID CONTROL SCRIPT
- /* if (PID == true)
-  {
-    error_m1 = RPM_actual_m1 - RPM_ref_m1;
-    error_kp = KP*error_m1;
-    error_kd = KD*(error_m1 - error_m1_prev);
-    integral+=error;
-    error_ki = KI*(integral);
-    motor1_rpm_pid_cmd = error_kp + error_ki + error_kd;
-    Serial.print("motor1_rpm_pid_cmd: ");Serial.println(motor1_rpm_pid_cmd);
-    //convert to serial vals
-    
- //   Serial1.write(motor1_cmd);
-  }*/
 
-  
 }
 
 
@@ -287,8 +272,8 @@ void loop() {
 int a;
                 // enable all interrupts
 
-//  RPM_ref_m1 = 94;
-a = 1;
+//  RPM_ref_m1 = 76;
+a = 71;
  Serial1.write(a);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
 // Serial1.write(180);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
  //delay(100);

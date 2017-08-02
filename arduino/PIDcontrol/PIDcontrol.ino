@@ -67,7 +67,7 @@ int integral;
 float KP = 1, KD = 1, KI = 1;
 float dt = 0.1, derivative;
 int error_prev = 0;
-
+int m1_cmd;
 
 
 
@@ -243,17 +243,18 @@ if (PID)
     error_prev = error_m1;   //save next previous error
 
     //debugging...
-//    Serial.print("The error is ");Serial.println(error_m1);
+    Serial.print("The error is ");Serial.println(error_m1);
 //    Serial.print("The error derivative is ");Serial.println(error_d);
-//    Serial.print("The integral is ");Serial.println(integral);
+    Serial.print("The integral is ");Serial.println(integral);
 
-    motor1_rpmcmd = error_kp;// + error_ki + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
-//   Serial.print("motor1_rpmcmd ");Serial.println(motor1_rpmcmd);
+    motor1_rpmcmd = error_kp + error_ki;// + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
+  // Serial.print("motor1_rpmcmd ");Serial.println(motor1_rpmcmd);
 
-    motor1_serialcmd = M1_rpm_to_serial(motor1_rpmcmd);
-    Serial1.write(motor1_serialcmd);
+    m1_cmd = M1_rpm_to_serial(motor1_rpmcmd);
+  //  Serial1.write(motor1_serialcmd);
 
-    Serial.print("motor1_serialcmd: ");Serial.println(motor1_serialcmd);
+    Serial.print("m1_cmd from PID: ");Serial.println(m1_cmd);
+   Serial1.write(m1_cmd);
 
 
   }
@@ -322,7 +323,9 @@ void loop() {
                 // enable all interrupts
 
  RPM_ref_m1 = 55;
- Serial.print("The reference RPM is: ");Serial.println(RPM_ref_m1);
+ m1_cmd = M1_rpm_to_serial(RPM_ref_m1);
+     Serial1.write(m1_cmd);
+
 
  //Serial1.write(55);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
  //Serial1.write(180);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
@@ -331,6 +334,9 @@ interrupts();
 
  while(1)
  {
+
+ //  Serial.print("The reference RPM is: ");Serial.println(RPM_ref_m1);
+ Serial.print("The reference serial is: ");Serial.println(m1_cmd);
 
  
  } 

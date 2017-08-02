@@ -210,11 +210,11 @@ ISR(TIMER1_OVF_vect)        // interrupt service routine
   cmd_inc++;
   RPM_actual_m1 = (encoder1count*600)/1920;
   encoder1count = 0;
-//  Serial.println(RPM_actual_m1);
+  Serial.println(RPM_actual_m1);
 
      RPM_actual_m2 = (encoder2count*600)/1920;
   encoder2count = 0;
-  Serial.println(RPM_actual_m2);
+//  Serial.println(RPM_actual_m2);
    
  clearEncoderCount(); 
   
@@ -242,7 +242,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine
 {
   TCNT3 = timer3_counter;   // preload timer
   digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
-
+/*
   if (cmd_inc >= 10)
   {
     cmd_inc = 0;
@@ -250,14 +250,14 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine
     m2_cmd = m2_cmd + 5;
     Serial.print("m1_cmd: ");Serial.println(m1_cmd);Serial.print("m2_cmd: ");Serial.println(m2_cmd);
 
-   // Serial1.write(m1_cmd);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
+    Serial1.write(m1_cmd);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
     Serial1.write(m2_cmd);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
   
    if (m2_cmd > 255)
    {
      Serial.println("STOP MOTORS DONE!");
    }
-  }
+  }*/
   
  
   
@@ -311,10 +311,10 @@ void setup() {
 
 void loop() {
 
-  m1_cmd = 1;
+  m1_cmd = 71;
   m2_cmd = 128;
-// Serial1.write(m1_cmd);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
- Serial1.write(m2_cmd);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
+ Serial1.write(m1_cmd);  //motor 1: 1 is full reverse, 64 is stop and 127 is full forward
+// Serial1.write(m2_cmd);   //motor 2: 128 is full reverse, 192 is stop and 255 is full forward
  interrupts();             // enable all interrupts
 
   while(1)
