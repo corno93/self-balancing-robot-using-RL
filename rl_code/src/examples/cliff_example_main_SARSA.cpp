@@ -5,7 +5,7 @@
 #include "cliff_world.h"
 
 #include <rl/reinforcement_learning.h>
-#include <rl/q_learning.h>
+#include <rl/sarsa.h>
 
 #define MAX_EPISODE 5000
 
@@ -18,11 +18,12 @@ int main()
     unsigned int wins, loses, wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
     char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
+    char next_action;
     std::vector<bool> available_actions(4, false);
     std::vector<float> q_row(4);
 
     // create object instances
-    q_learning controller;
+    sarsa controller;
     cliff_world env;
 
     srand(time(NULL));//seed the randomizer
@@ -43,30 +44,37 @@ int main()
         current_state = 00;
         goal_state = 30;
 
+        //get all legal actions based on state
+        available_actions = env.available_actions(current_state);
+
+        //choose action based on policy
+        current_state_idx = env.get_state_index(current_state);
+        q_row = env.Q[current_state_idx];
+        action = controller.choose_action(epsilon, available_actions, q_row);
+
 
         while(1)
         {
-            //get all legal actions based on state
-            available_actions = env.available_actions(current_state);
-
-            //choose action based on policy
-            current_state_idx = env.get_state_index(current_state);
-            q_row = env.Q[current_state_idx];
-            action = controller.choose_action(epsilon, available_actions, q_row);
-
-            //take action
-            next_state = env.take_action(action, current_state);
-
+            //get next state by taking action
+            //next_state = env.take_action(action, current_state);
             //get next state. incorporates transition probs.
-            //next_state = env.next_state(action, current_state, available_actions);
+            next_state = env.next_state(action, current_state, available_actions);
+
+            //get all legal actions based on state
+            available_actions = env.available_actions(next_state);
+
+            //get next action
+            next_state_idx = env.get_state_index(next_state);
+            q_row = env.Q[next_state_idx];
+            next_action = controller.choose_action(epsilon, available_actions, q_row);
+
 
             //get reward
             reward = env.get_reward(next_state);
 
             //TD update
             next_state_idx = env.get_state_index(next_state);
-            max_action_idx = distance(env.Q[next_state_idx].begin(), max_element(env.Q[next_state_idx].begin(), env.Q[next_state_idx].end()));
-            td_target = reward + discount_factor*env.Q[next_state_idx][max_action_idx];
+            td_target = reward + discount_factor*env.Q[next_state_idx][next_action];
             td_error = td_target - env.Q[current_state_idx][action];
             env.Q[current_state_idx][action]+= td_error*alpha;
 
@@ -84,6 +92,8 @@ int main()
             {
                 time_step++;
                 current_state = next_state;
+                current_state_idx = env.get_state_index(current_state);
+                action = next_action;
             }
         }
         if (episode % 10 == 0 && episode > 1)
@@ -110,3 +120,4 @@ int main()
         }
     }
 }
+
