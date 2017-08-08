@@ -1,11 +1,6 @@
 
-#include <iostream>
-#include <vector>
 
 #include "two_wheeled.h"
-
-#include <rl/reinforcement_learning.h>
-#include <rl/q_learning.h>
 
 #define MAX_EPISODE 5000
 
@@ -17,7 +12,7 @@ int main()
     signed short int time_step, reward;
     unsigned int wins, loses, breakpoint = 0,wins_prev=0;
     float td_error, td_target, discount_factor, alpha, epsilon;
-    char current_state, goal_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
+    char current_state, action, next_state, current_state_idx, next_state_idx, max_action_idx;
     std::vector<bool> available_actions(ACTIONS, false);
     std::vector<float> q_row(ACTIONS);
 
@@ -35,14 +30,14 @@ int main()
     wins = 0;
     loses = 0;
 
+    clock_t time_take_action, time_take_obs;
+
 
     for (int episode = 0; episode < MAX_EPISODE; episode++)
     {
 
         time_step = 0;
-        current_state = 15;//start at 5 degs
-        //goal_state = 30;//will there be a 'goal' state?
-
+        current_state = 5;//start at 5 degs
 
         while(1)
         {
@@ -55,8 +50,15 @@ int main()
             action = controller.choose_action(epsilon, available_actions, q_row);
 
             //take action
+            time_take_action = clock(); //get time when action is initiated
             //next_state = env.take_action(action, current_state);
-            //get next state. incorporates transition probs.
+
+            //use delay between taking action and reading obs?
+            //BOTH TIMES ARE GOING TO BE THE SAME...
+
+            time_take_obs = clock();//get time when obs is taken
+            //get new state
+
             next_state = env.next_state(action, current_state, available_actions);
 
             //get reward
