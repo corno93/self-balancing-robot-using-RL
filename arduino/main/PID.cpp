@@ -61,5 +61,19 @@ int PID::M1_rpm_to_serial(int rpm_cmd)
   return (serial_cmd);
 }
 
+int PID::M2_rpm_to_serial(int rpm_cmd)
+{
+  int serial_cmd;
+  serial_cmd = (rpm_cmd - 1209)/-6.3586;     //m2 eqn 
+  if (serial_cmd > 255)
+  {
+    serial_cmd = 255;
+  }else if (serial_cmd < 128)
+  {
+    serial_cmd = 128;
+  }
+  return (serial_cmd);
+}
+
 
 

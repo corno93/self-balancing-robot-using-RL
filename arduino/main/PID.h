@@ -18,8 +18,10 @@ class PID
 
   PID(int, int, int);
   ~PID();
-  int updatePID(int, int);
+  int updatePID(int, int, char);
   int M1_rpm_to_serial(int);
+  int M2_rpm_to_serial(int);
+
 };
 
 
