@@ -8,7 +8,7 @@
 #include "PID.h"
 
 SabertoothSimplified ST;
-PID motor1(15,2,3);
+PID motor1(1,1,2);
 
 
 
@@ -44,14 +44,14 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   int pid_cmd;
-  Serial1.write(70);
-  RPM_ref_m1 = 50;
+  Serial1.write(85);
+  RPM_ref_m1 = 150;
 
 
   while(1)
   {
-       Serial.print("The actual rpm is ");Serial.println(RPM_actual_m1);
-       if (PID)
+     Serial.print("The actual rpm is ");Serial.println(RPM_actual_m1);
+      if (PID)
        {
         pid_cmd = motor1.updatePID(RPM_actual_m1, RPM_ref_m1);
         Serial1.write(pid_cmd);
@@ -77,10 +77,13 @@ void timer3_interrupt_setup()
   // Set timer1_counter to the correct value for our interrupt interval
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;   // 3036 gives 0.5Hz ints
-  timer3_counter = 62411;   // 62411 gives 10Hz ints//34286 gives 1Hz ints
+  //timer3_counter = 59286;//10hz ints at 256 prescale
+  timer3_counter = 40536;//40536: 10hz ints at 64 prescale
   
   TCNT3 = timer3_counter;   // preload timer
-  TCCR3B |= (1 << CS12);    // 256 prescaler 
+ // TCCR3B |= (1 << CS12);    // 256 prescaler 
+ TCCR3B |= (1 << CS11);    // 64 prescaler 
+ TCCR3B |= (1 << CS10);    // 64 prescaler 
   TIMSK3 |= (1 << TOIE3);   // enable timer overflow interrupt
 }
 
@@ -94,11 +97,11 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
  // encoder2count = readEncoder(2);
 
   ISR3_counter++;
-  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq
 
 
-  if (ISR3_counter >=2)   //at 50Hz
+  if (ISR3_counter >=2)   //at 5Hz
   {    
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq
 
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*300)/1920;
@@ -121,22 +124,24 @@ int PID::updatePID(int actual, int ref){
   
     error = ref - actual;  //get RPM error
     
-    error_kp = (kp*error)/10; //proportional
+    error_kp = (kp*error); //proportional
 
     integral+=error*0.2;  //integral
     error_ki = (ki*integral);
 
-    derivative = (error - error_prev) /dt; 
-    error_kd = kd*(derivative/10);
+    derivative = (error - error_prev) / 0.2; 
+    error_kd = kd*(derivative);
 
     error_prev = error;   //save next previous error
 
     //debugging...
     Serial.print("The error is ");Serial.println(error);
+        Serial.print("The kp error is ");Serial.println(error_kp);
+
 //    Serial.print("The error derivative is ");Serial.println(error_d);
     Serial.print("The integral is ");Serial.println(integral);
 
-    pid_cmd = (error_kp + error_ki);// + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
+    pid_cmd = error_kp + error_ki;// + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
     Serial.print("The pid_cmd is ");Serial.println(pid_cmd);
 
   // Serial.print("motor1_rpmcmd ");Serial.println(motor1_rpmcmd);
