@@ -12,8 +12,7 @@ class PID
   int ki;
   int  kd;
   int integral_sum;
-  int reference_point;
-  int output;
+  int error_prev;
   
 
   PID(int, int, int);
