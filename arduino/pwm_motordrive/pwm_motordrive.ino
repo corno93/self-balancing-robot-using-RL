@@ -25,8 +25,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  analogWrite(M1pin, 50);    //M1: 1 full speed anti clockwise, 127 stop, 255 full speed clockwise
-  analogWrite(M2pin, 10);  //M2: 1 full speed  clockwise, 127 stop, 255 full speed anti clockwise
+  analogWrite(M1pin, 129);    //M1: 1 full speed anti clockwise, 127 stop, 255 full speed clockwise
+  analogWrite(M2pin, 127);  //M2: 1 full speed  clockwise, 127 stop, 255 full speed anti clockwise
 
 
 }

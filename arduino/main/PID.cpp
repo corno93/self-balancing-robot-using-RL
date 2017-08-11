@@ -1,13 +1,15 @@
 
 
 #include "PID.h"
+#include "fixedpoint.h"
 
-
-PID::PID(int kp_, int ki_, int kd_)
+PID::PID(fixed_point_t kp_, fixed_point_t ki_, fixed_point_t kd_)
 {
   kp = kp_;
   ki = ki_;
   kd = kd_;
+  integral_sum = 0;
+  error_prev = 0;
 
 }
 
@@ -74,6 +76,7 @@ int PID::M2_rpm_to_serial(int rpm_cmd)
   }
   return (serial_cmd);
 }
+
 
 
 

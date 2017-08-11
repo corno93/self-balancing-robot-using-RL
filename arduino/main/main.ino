@@ -1,17 +1,25 @@
 
 
-#define USBCON //uses Tx1 (see SabertoothSimplified.h)
+//#define USBCON //uses Tx1 (see SabertoothSimplified.h)
 #define ledPin 13
 #define M1pin 12
 #define M2pin 11
-#include <SabertoothSimplified.h>
+//#include <SabertoothSimplified.h>
 #include "encoders.h"
 #include "fixedpoint.h"
 #include "PID.h"
 
+
+//DT VARIBALES
+unsigned long start = 0;
+unsigned long end_ = 0;
+
+
+int saturation(int cmd);
+
 //OBJECT INSTANCES
-SabertoothSimplified ST;
-PID motor1(5,4,0);
+//SabertoothSimplified ST;
+PID motor1(0x00010000,0x00000000,0);
 PID motor2(0,0,0);
 
 
@@ -38,7 +46,7 @@ boolean new_data = false;
 
 void setup() {
     Serial.begin(9600);      // Serial com for data output
-    SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
+  //  SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
     initEncoders();       Serial.println("Encoders Initialized...");  
     clearEncoderCount();  Serial.println("Encoders Cleared...");
     pinMode(ledPin, OUTPUT);
@@ -52,37 +60,67 @@ void setup() {
   pinMode(M2pin, OUTPUT);
   
     interrupts();
-    RPM_ref_m1 = -50;
+    RPM_ref_m1 = 50;
     RPM_ref_m2 = 30;
     new_data = true;
-    analogWrite(M1pin, 64);   
-    
+    analogWrite(M1pin, 100);  
+    analogWrite(M2pin, 128);
+
+
+    fixed_point_t s1,s2,s3;
+
+    s1 = 0x00010000;
+    s2 = 0x00800000;
+    Serial.println(fp_mul(s1,s2), HEX);
+
+    //Serial1.write(72); 
 }
 
 void loop() {
-  int motor_cmd = 0;
+  fixed_point_t pid_output;
+  unsigned char motor_cmd = 0;
+  fixed_point_t s1, s2, s3;
+  int time_elapsed= 0;
 
-  /*  if(new_data)  //imitate new data received over USB serial
-    {
-      serial_cmd = motor1.M1_rpm_to_serial(RPM_ref_m1);
-      Serial1.write(serial_cmd);
-      new_data = false;
-      serial_cmd = motor2.M2_rpm_to_serial(RPM_ref_m2);
-      Serial1.write(serial_cmd);
-    }*/
-     Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
+  return;
 
-     if (PID_flag)
+ /* s1 = 0x00000033;
+  s2 = 0x00000100;
+  s3 = 0x00000A00;
+  Serial.println(s1, HEX);
+  Serial.println(s2, HEX);
+  Serial.println(fp_mul(s1,s2), HEX);
+  Serial.println(fp_mul(s1,s3), HEX);*/
+
+    // Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
+
+       if (PID_flag)
      {
-        motor_cmd = motor1.updatePID(RPM_actual_m1, RPM_ref_m1,1);
-        //Serial1.write(motor_cmd);
-        analogWrite(M1pin, motor_cmd);    //M1: 1 full speed anti clockwise (+rpm), 127 stop, 255 full speed clockwise (-rpm)
-        analogWrite(M2pin, 127);  //M2: 1 full speed  clockwise, 127 stop, 255 full speed anti clockwise
+        start = micros();
+//      //delta time interrupt  test
+//      Serial.println("ELPASED TIME IS");
+//      time_elapsed = start - micros();
+//      Serial.println(time_elapsed);
+//      start = micros();
+//      PID_flag = false;
+        PID_flag = false;
 
-  //      motor_cmd = motor2.updatePID(RPM_actual_m2, RPM_ref_m2,2);
-  //      Serial1.write(motor_cmd);
+      //  Serial.println(RPM_actual_m1);
+        pid_output = motor1.updatePID(int16_fp(RPM_actual_m1), int16_fp(RPM_ref_m1), 1);
+        // translate to integer
+        // Serial.println(pid_output, HEX);
+ //       Serial.print("other thing: "); Serial.println(*((unsigned char *)&pid_output + 1), HEX);
+        
+        int tmp = *(int *)((char *)&pid_output + 1);
+        // motor_cmd = *((unsigned char *)&pid_output + 1) + (unsigned char)127;
+        motor_cmd = (unsigned char)((tmp / 256) + 128);
+        // motor_cmd = saturation(motor_cmd);
+   //     Serial.print("motor cmd: ");Serial.println(motor_cmd);
+        analogWrite(M1pin, motor_cmd);    //M1: 1 full speed anti clockwise (-rpm), 127 stop, 255 full speed clockwise (+rpm)
+        end_ = micros() - start;
+        
      }
-   
+
 }
 
 
@@ -97,14 +135,17 @@ void timer3_interrupt_setup()
 
   // Set timer1_counter to the correct value for our interrupt interval
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
-  //timer3_counter = 3036;   // 3036 gives 0.5Hz ints
-  //timer3_counter = 59286;//10hz ints at 256 prescale
-  timer3_counter = 40536;//40536: 10hz ints at 64 prescale
+  //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
+  //timer3_counter = 59286;   //10hz ints at 256 prescale
+  //timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
+  timer3_counter = 45536;     //100hz at 8 prescale
   
   TCNT3 = timer3_counter;   // preload timer
- // TCCR3B |= (1 << CS12);    // 256 prescaler 
- TCCR3B |= (1 << CS11);    // 64 prescaler 
- TCCR3B |= (1 << CS10);    // 64 prescaler 
+  TCCR3B &=~7; //clear
+  TCCR3B |= (1 << CS11);    //8 prescaler
+  //TCCR3B |= (1 << CS12);    // 256 prescaler 
+ //TCCR3B |= (1 << CS11);    // 64 prescaler 
+ //TCCR3B |= (1 << CS10);    // 64 prescaler 
   TIMSK3 |= (1 << TOIE3);   // enable timer overflow interrupt
 }
 
@@ -112,6 +153,7 @@ void timer3_interrupt_setup()
   
 ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 {
+
   TCNT3 = timer3_counter;   // preload timer
 
   encoder1count = readEncoder(1); 
@@ -119,54 +161,59 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   ISR3_counter++;
 
-
-  if (ISR3_counter >=2)   //at 5Hz
+  if (ISR3_counter >=2)   //at 50Hz
   {    
- // digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq
 
     ISR3_counter = 0;
-    RPM_actual_m1 = (encoder1count*300)/1920;
-    RPM_actual_m2 = (encoder2count*300)/1920;
+    RPM_actual_m1 = (encoder1count*3000)/1920;
+    RPM_actual_m2 = (encoder2count*3000)/1920;
     encoder1count = 0;
     encoder2count = 0;
     clearEncoderCount(); 
     PID_flag = true;
 
-
-   /* PID_count++;
-    
-    if (PID_count >=2)
-    {
-      PID_flag = true;
-    }*/
-      
   }
 
 }
 
 
 
-int PID::updatePID(int actual, int ref, char motor){
-  int error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref, char motor)
+{
+  // int error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+ 
+    fixed_point_t error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+    //Serial.println(actual, HEX);
+    //Serial.println(ref, HEX);
 
     error = ref - actual;             //get RPM error
     
-    error_kp = (kp*error)/10;           //proportional
+    error_kp = fp_mul(kp, error);
+    //dt = dt - micros();
+    //Serial.print("time difference is: ");Serial.println(dt);
 
-    integral_sum += error*0.2;          //integral error
-    error_ki = (ki*integral_sum)/10;
+    integral_sum += fp_mul(error, dt);          //integral error
+    error_ki = fp_mul(ki, integral_sum);
 
-    derivative = ((error - error_prev) /0.2);     //derivative error
-    error_kd = (kd*derivative)/10;
+    derivative = fp_mul(error - error_prev, dt_i);
+    error_kd = fp_mul(kd, derivative);
 
     error_prev = error;   //save error
+    //Serial.println("a");
+    Serial.println(error_kp, HEX);
+    Serial.println(error, HEX);
+    //Serial.println(kp, HEX);
+    // Serial.println(error_kp, HEX);
 
+    return (error_kp + error_ki + error_kd);
+
+    
     pid_cmd = (error_kp + error_ki + error_kd + 127);          //tuning info at: http://robotsforroboticists.com/pid-control/
     Serial.print("pid cmd before saturation cuts: ");Serial.println(pid_cmd);
 
 
     //debugging...
-      Serial.print("The error is ");Serial.println(error);
       Serial.print("The kp error is ");Serial.println(error_kp);
     Serial.print("The kd error  is ");Serial.println(error_kd);
     Serial.print("The derivative   is ");Serial.println(derivative);
@@ -181,49 +228,8 @@ int PID::updatePID(int actual, int ref, char motor){
     {
       pid_cmd = 1;
     }
-
-
-    //saturation for serial control
-   /*   if (motor == 1)
-    {
-      if (pid_cmd > 127)
-      {
-        pid_cmd = 127;
-      }
-      else if (pid_cmd < 1)
-      {
-        pid_cmd = 1;
-      }
-    }
-    else if (motor == 2)
-    {
-      if (pid_cmd > 255)
-      {
-        pid_cmd = 255;
-      }
-      else if (pid_cmd < 128)
-      {
-        pid_cmd = 128;
-      }
-    }*/
-
-
-    
-  /*    // translate rpm to serial (not sure if such a good idea...)(if using simplified serial)
-    if (motor == 1)
-    {
-      pid_cmd_serial = M1_rpm_to_serial(pid_cmd);
-    }
-    else if (motor == 2)
-    {
-      pid_cmd_serial = M2_rpm_to_serial(pid_cmd);
-
-    }*/
-    //Serial.print("pid_cmd_serial from PID: ");Serial.println(pid_cmd_serial);
-
-   PID_flag = false;
-   return pid_cmd;
 }
+
 
 //int 4 is for debugging purposes. increment rpm ref by 10 every 5 secs
 void timer4_interrupt_setup()
@@ -248,6 +254,7 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine
     // preload timer
       TCNT4 = timer4_counter; 
       ISR4_counter++;
+      
 
       if (ISR4_counter >=5)
       {
@@ -256,15 +263,24 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine
         Serial.println("RPM inc");
         motor1.integral_sum = 0;
         motor2.integral_sum = 0;
-
-
-        
       }
       if (RPM_ref_m1 >= 200)
       {
         Serial.println("RPM at 200 stop");
       }
-      
 
-  
+}
+
+
+int saturation(int cmd)
+{
+ if (cmd > 255)
+ {
+  cmd = 255 ;
+ }else if (cmd < 1)
+ {
+  cmd = 1;
+ }
+   return cmd;
+
 }

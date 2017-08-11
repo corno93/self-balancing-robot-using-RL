@@ -3,21 +3,24 @@
 #ifndef HEADER_PID
   #define HEADER_PID
 
-#define dt 2
+#include "fixedpoint.h"
+#define dt ((fixed_point_t)0x00000033)
+#define dt_i ((fixed_point_t)0x00000500)
+
 
 class PID
 {
   public:
-  int kp;
-  int ki;
-  int  kd;
-  int integral_sum;
-  int error_prev;
+  fixed_point_t kp;
+  fixed_point_t ki;
+  fixed_point_t  kd;
+  fixed_point_t integral_sum;
+  fixed_point_t error_prev;
   
 
-  PID(int, int, int);
+  PID(fixed_point_t, fixed_point_t, fixed_point_t);
   ~PID();
-  int updatePID(int, int, char);
+  fixed_point_t updatePID(fixed_point_t, fixed_point_t, char);
   int M1_rpm_to_serial(int);
   int M2_rpm_to_serial(int);
 
