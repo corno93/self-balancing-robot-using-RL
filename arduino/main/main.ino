@@ -11,7 +11,7 @@
 
 //OBJECT INSTANCES
 SabertoothSimplified ST;
-PID motor1(10,0,0);
+PID motor1(5,4,0);
 PID motor2(0,0,0);
 
 
@@ -52,15 +52,15 @@ void setup() {
   pinMode(M2pin, OUTPUT);
   
     interrupts();
-    RPM_ref_m1 = 30;
+    RPM_ref_m1 = -50;
     RPM_ref_m2 = 30;
     new_data = true;
-
+    analogWrite(M1pin, 64);   
     
 }
 
 void loop() {
-  int motor_cmd;
+  int motor_cmd = 0;
 
   /*  if(new_data)  //imitate new data received over USB serial
     {
@@ -76,8 +76,8 @@ void loop() {
      {
         motor_cmd = motor1.updatePID(RPM_actual_m1, RPM_ref_m1,1);
         //Serial1.write(motor_cmd);
-        analogWrite(M1pin, 105);    //M1: 1 full speed anti clockwise (+rpm), 127 stop, 255 full speed clockwise (-rpm)
-        //analogWrite(M2pin, 1);  //M2: 1 full speed  clockwise, 127 stop, 255 full speed anti clockwise
+        analogWrite(M1pin, motor_cmd);    //M1: 1 full speed anti clockwise (+rpm), 127 stop, 255 full speed clockwise (-rpm)
+        analogWrite(M2pin, 127);  //M2: 1 full speed  clockwise, 127 stop, 255 full speed anti clockwise
 
   //      motor_cmd = motor2.updatePID(RPM_actual_m2, RPM_ref_m2,2);
   //      Serial1.write(motor_cmd);
@@ -147,17 +147,17 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
 
 int PID::updatePID(int actual, int ref, char motor){
-  int error, error_kp,error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+  int error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
 
     error = ref - actual;             //get RPM error
     
-    error_kp = (kp*error)/10;              //proportional
+    error_kp = (kp*error)/10;           //proportional
 
     integral_sum += error*0.2;          //integral error
-    error_ki = ki*integral_sum;
+    error_ki = (ki*integral_sum)/10;
 
     derivative = ((error - error_prev) /0.2);     //derivative error
-    error_kd = kd*derivative;
+    error_kd = (kd*derivative)/10;
 
     error_prev = error;   //save error
 
@@ -173,9 +173,18 @@ int PID::updatePID(int actual, int ref, char motor){
     Serial.print("The ki error  is ");Serial.println(error_ki);
     Serial.print("The integral is ");Serial.println(integral_sum);
 
+    //saturation for PWM control
+    if (pid_cmd > 255)
+    {
+      pid_cmd = 255;
+    }else if (pid_cmd < 1)
+    {
+      pid_cmd = 1;
+    }
 
-    //saturation (if using simplified serial)
- /*   if (motor == 1)
+
+    //saturation for serial control
+   /*   if (motor == 1)
     {
       if (pid_cmd > 127)
       {
@@ -247,6 +256,7 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine
         Serial.println("RPM inc");
         motor1.integral_sum = 0;
         motor2.integral_sum = 0;
+
 
         
       }
