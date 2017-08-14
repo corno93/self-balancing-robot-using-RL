@@ -14,7 +14,7 @@ WheelController::~WheelController() {}
 
 char WheelController::tick(int actual_rpm, int ref_rpm) {
 
-  Serial.println(this->pid.kp, HEX);
+//  Serial.println(this->pid.kp, HEX);
 
   fixed_point_t pid_output = this->pid.updatePID(int16_fp(actual_rpm), int16_fp(ref_rpm));
   pid_output = fp_saturate(pid_output, 0x007FFF00);

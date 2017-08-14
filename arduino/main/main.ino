@@ -49,13 +49,15 @@ int PID_count;
 
 //COMS VARIBALES:
 boolean new_data = false;
+String inputString = "";         // a String to hold incoming data
+boolean stringComplete = false;  // whether the string is complete
 
 
 void setup() {
     Serial.begin(9600);      // Serial com for data output
   //  SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
-    initEncoders();       Serial.println("Encoders Initialized...");  
-    clearEncoderCount();  Serial.println("Encoders Cleared...");
+    initEncoders();       //Serial.println("Encoders Initialized...");  
+    clearEncoderCount();  //Serial.println("Encoders Cleared...");
     pinMode(ledPin, OUTPUT);
     timer3_interrupt_setup(); //encoders read and RPM calcs
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
@@ -67,11 +69,13 @@ void setup() {
   pinMode(M2pin, OUTPUT);
   
     interrupts();
-    RPM_ref_m1 = 60;
-    RPM_ref_m2 = -60;
+  //  RPM_ref_m1 = 60;
+  //  RPM_ref_m2 = -60;
     new_data = true;
     analogWrite(M1pin, 128);  
     analogWrite(M2pin, 128);
+      inputString.reserve(200);
+
 }
 
 void loop() {
@@ -79,6 +83,7 @@ void loop() {
   unsigned char motor_cmd = 0;
   int time_elapsed= 0;
   int start, end_;
+  int n;
 
      //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
 
@@ -90,11 +95,12 @@ void loop() {
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
 
-        // time debug
+        // time elapsed debug
         end_ = micros() - start;
         //Serial.println(end_);
         
      }
+
 
 }
 
@@ -138,7 +144,6 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   if (ISR3_counter >=2)   //at 50Hz
   {    
-  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq
 
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*3000)/1920;
@@ -150,5 +155,21 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   }
 
+}
+
+
+void serialEvent() 
+{
+  if (Serial.available()) 
+  {
+    // get the new byte:
+    RPM_ref_m2 = RPM_ref_m1 = (char)Serial.read();
+    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+
+    // add it to the inputString:
+    // if the incoming character is a newline, set a flag so the main loop can
+    // do something about it:
+
+  }
 }
 

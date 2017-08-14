@@ -24,7 +24,7 @@ void PID::init() {
 
 fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref)
 { 
-    fixed_point_t error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+    fixed_point_t error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative;
 
     error = ref - actual;             //get RPM error
     
