@@ -19,7 +19,7 @@ int saturation(int cmd);
 
 //OBJECT INSTANCES
 //SabertoothSimplified ST;
-PID motor1(0x00010000,0x00000000,0);
+PID motor1(0x00006000,0x00000100,0);
 PID motor2(0,0,0);
 
 
@@ -60,7 +60,7 @@ void setup() {
   pinMode(M2pin, OUTPUT);
   
     interrupts();
-    RPM_ref_m1 = 50;
+    RPM_ref_m1 = 100;
     RPM_ref_m2 = 30;
     new_data = true;
     analogWrite(M1pin, 100);  
@@ -69,9 +69,14 @@ void setup() {
 
     fixed_point_t s1,s2,s3;
 
+    if ((fixed_point_t)0x01000000 > (fixed_point_t)0x00000100) {
+      Serial.println("fdsafdsa");
+    }
+
     s1 = 0x00010000;
-    s2 = 0x00800000;
+    s2 = 0x00100000;
     Serial.println(fp_mul(s1,s2), HEX);
+    Serial.println(fp_saturate((fixed_point_t)0x01000000, (fixed_point_t)0x00FFFF00), HEX);
 
     //Serial1.write(72); 
 }
@@ -82,8 +87,6 @@ void loop() {
   fixed_point_t s1, s2, s3;
   int time_elapsed= 0;
 
-  return;
-
  /* s1 = 0x00000033;
   s2 = 0x00000100;
   s3 = 0x00000A00;
@@ -92,7 +95,7 @@ void loop() {
   Serial.println(fp_mul(s1,s2), HEX);
   Serial.println(fp_mul(s1,s3), HEX);*/
 
-    // Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
+     //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
 
        if (PID_flag)
      {
@@ -110,8 +113,11 @@ void loop() {
         // translate to integer
         // Serial.println(pid_output, HEX);
  //       Serial.print("other thing: "); Serial.println(*((unsigned char *)&pid_output + 1), HEX);
+
+        // Saturate the PID output
+        pid_output = fp_saturate(pid_output, 0x007FFF00);
+        int32_t tmp = *(int *)((char *)&pid_output + 1);
         
-        int tmp = *(int *)((char *)&pid_output + 1);
         // motor_cmd = *((unsigned char *)&pid_output + 1) + (unsigned char)127;
         motor_cmd = (unsigned char)((tmp / 256) + 128);
         // motor_cmd = saturation(motor_cmd);
@@ -201,8 +207,8 @@ fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref, char motor
 
     error_prev = error;   //save error
     //Serial.println("a");
-    Serial.println(error_kp, HEX);
-    Serial.println(error, HEX);
+    //Serial.println(error_kp, HEX);
+    //Serial.println(error, HEX);
     //Serial.println(kp, HEX);
     // Serial.println(error_kp, HEX);
 
