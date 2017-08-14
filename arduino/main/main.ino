@@ -76,6 +76,18 @@ void setup() {
     analogWrite(M2pin, 128);
       inputString.reserve(200);
 
+
+  /* char str[]  = "-123&-46";
+   char* cmd = strtok(str,"&");
+   int RPM_ref_m1 = atoi(cmd);
+   cmd = strtok (NULL, "&");
+   int RPM_ref_m2 = atoi(cmd);
+
+  Serial.println(RPM_ref_m1);    Serial.println(RPM_ref_m2);    */
+  
+
+
+
 }
 
 void loop() {
@@ -158,13 +170,27 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 }
 
 
-void serialEvent() 
+void serialEvent()
 {
-  if (Serial.available()) 
+  String data;
+  int inData[2];
+
+  while (Serial.available())
   {
-    // get the new byte:
-    RPM_ref_m2 = RPM_ref_m1 = (char)Serial.read();
-    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+        digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq  
+
+    for (int n = 0; n < 2;n++)
+    {
+      inData[n] = Serial.read();
+    }
+
+  //  data = Serial.read();
+  RPM_ref_m1 = inData[0];
+    RPM_ref_m2 = inData[1];
+
+  
+
+    
 
     // add it to the inputString:
     // if the incoming character is a newline, set a flag so the main loop can
@@ -172,4 +198,4 @@ void serialEvent()
 
   }
 }
-
+   
