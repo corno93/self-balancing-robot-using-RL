@@ -1,5 +1,3 @@
-
-
 #include "PID.h"
 #include "fixedpoint.h"
 
@@ -18,36 +16,32 @@ PID::~PID()
   
 }
 
-/*int PID::updatePID(int actual, int ref){
-  int error, error_kp, integral,error_ki, error_kd, error_prev, pid_cmd_serial, pid_cmd, derivative;
+void PID::init() {
   
-    error = ref - actual;  //get RPM error
+  integral_sum = 0;
+  error_prev = 0;
+}
+
+fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref, char motor)
+{
+  // int error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+ 
+    fixed_point_t error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
+
+    error = ref - actual;             //get RPM error
     
-    error_kp = kp*error; //proportional
+    error_kp = fp_mul(kp, error);
 
-    integral+=error*(dt/10);  //integral
-    error_ki = ki*integral;
+    integral_sum += fp_mul(error, dt);          //integral error
+    error_ki = fp_mul(ki, integral_sum);
 
-    derivative = (error - error_prev) /dt; 
-    error_kd = kd*(derivative/10);
+    derivative = fp_mul(error - error_prev, dt_i);
+    error_kd = fp_mul(kd, derivative);
 
-    error_prev = error;   //save next previous error
+    error_prev = error;   //save error
 
-    //debugging...
-    Serial.print("The error is ");Serial.println(error);
-//    Serial.print("The error derivative is ");Serial.println(error_d);
- //   Serial.print("The integral is ");Serial.println(integral);
-
-    pid_cmd = (error_kp + error_ki)/10;// + error_kd;              //tuning tech at: http://robotsforroboticists.com/pid-control/
-  // Serial.print("motor1_rpmcmd ");Serial.println(motor1_rpmcmd);
-
-    pid_cmd_serial = M1_rpm_to_serial(pid_cmd);
-  //  Serial1.write(motor1_serialcmd);
-
-//    Serial.print("pid_cmd_serial from PID: ");Serial.println(pid_cmd_serial);
-   // Serial1.write(pid_cmd_serial);
-   return pid_cmd_serial;
-}*/
+    return (error_kp + error_ki + error_kd);
+}
 
 int PID::M1_rpm_to_serial(int rpm_cmd)
 {
