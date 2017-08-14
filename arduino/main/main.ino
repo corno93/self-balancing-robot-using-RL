@@ -70,7 +70,7 @@ void setup() {
     RPM_ref_m1 = 60;
     RPM_ref_m2 = -60;
     new_data = true;
-    analogWrite(M1pin, 100);  
+    analogWrite(M1pin, 128);  
     analogWrite(M2pin, 128);
 }
 
@@ -90,12 +90,7 @@ void loop() {
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
 
-        //pid_output = motor1.updatePID(int16_fp(RPM_actual_m1), int16_fp(RPM_ref_m1), 1);
-        // Saturate the PID output
-        //pid_output = fp_saturate(pid_output, 0x007FFF00);
-        //int32_t tmp = *(int *)((char *)&pid_output + 1);
-        //motor_cmd = (unsigned char)((tmp / 256) + 128);
-        //analogWrite(M1pin, motor_cmd);    //M1: 1 full speed anti clockwise (-rpm), 127 stop, 255 full speed clockwise (+rpm)
+        // time debug
         end_ = micros() - start;
         //Serial.println(end_);
         
@@ -157,16 +152,3 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
 }
 
-
-int saturation(int cmd)
-{
- if (cmd > 255)
- {
-  cmd = 255 ;
- }else if (cmd < 1)
- {
-  cmd = 1;
- }
-   return cmd;
-
-}

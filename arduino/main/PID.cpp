@@ -22,10 +22,8 @@ void PID::init() {
   error_prev = 0;
 }
 
-fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref, char motor)
-{
-  // int error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
- 
+fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref)
+{ 
     fixed_point_t error, error_kp, error_ki, error_kd, pid_cmd_serial, pid_cmd, derivative, bias;
 
     error = ref - actual;             //get RPM error
@@ -42,35 +40,6 @@ fixed_point_t PID::updatePID(fixed_point_t actual, fixed_point_t ref, char motor
 
     return (error_kp + error_ki + error_kd);
 }
-
-int PID::M1_rpm_to_serial(int rpm_cmd)
-{
-  int serial_cmd;
-  serial_cmd = (rpm_cmd + 400.68)/6.3504;     //m1 eqn
-  if (serial_cmd > 127)
-  {
-    serial_cmd = 127;
-  }else if (serial_cmd < 1)
-  {
-    serial_cmd = 1;
-  }
-  return (serial_cmd);
-}
-
-int PID::M2_rpm_to_serial(int rpm_cmd)
-{
-  int serial_cmd;
-  serial_cmd = (rpm_cmd - 1209)/-6.3586;     //m2 eqn 
-  if (serial_cmd > 255)
-  {
-    serial_cmd = 255;
-  }else if (serial_cmd < 128)
-  {
-    serial_cmd = 128;
-  }
-  return (serial_cmd);
-}
-
 
 
 

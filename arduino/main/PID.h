@@ -3,7 +3,6 @@
 
 #include "fixedpoint.h"
 
-// Are these up to date?
 #define dt ((fixed_point_t)0x00000033)
 #define dt_i ((fixed_point_t)0x00000500)
 
@@ -21,9 +20,7 @@ class PID
   PID(fixed_point_t, fixed_point_t, fixed_point_t);
   ~PID();
   void init();
-  fixed_point_t updatePID(fixed_point_t, fixed_point_t, char);
-  int M1_rpm_to_serial(int);
-  int M2_rpm_to_serial(int);
+  fixed_point_t updatePID(fixed_point_t, fixed_point_t);
 
 };
 
