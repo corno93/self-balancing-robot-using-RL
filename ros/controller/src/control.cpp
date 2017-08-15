@@ -1,4 +1,4 @@
-//THIS IS THE CONTROL NODE
+//THIS IS THE PID CONTROL NODE
 
 
 #include "ros/ros.h"
@@ -6,17 +6,22 @@
 #include <stdio.h>
 #include <wiringSerial.h>
 #include <wiringPi.h>
+#include <sensor_msgs/Imu.h>
+
+
 
 class Controller
 {
 
 	public:
-		//Replace type of message with message containing the encoder values
+		Controller();
+		~Controller();
 		void init();
 		void write_serial_command(char command);
 	
-		//Ros Node Handle
-  		ros::NodeHandle n;
+		//Ros Node Handle (subscribes to IMU /data topic)
+  		ros::NodeHandle n;	//make private? eh..
+		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
 		
 		//serialPutchar parameter
 		int fd;	
@@ -24,20 +29,13 @@ class Controller
 
 
 
-/*char command Motors::step()
-{
-	
-
-}*/
-
-
-void Controller::init()
+Controller::Controller()
 {
 	//Ros Init (subscribe to IMU topic)
-//	ros::Subscriber sub = n.subscribe("encoder_topic", 1000, this->ecoder_callback);
+	ros::Subscriber sub = n.subscribe("/data", 1000, &Controller::IMU_callback, this);
 
 	//Serial Init
-	if ((fd = serialOpen("/dev/ttyACM0",9600))<0)
+	if ((fd = serialOpen("/dev/ttyACM1",9600))<0)
 	{
 		ROS_INFO("Unable to open serial device");
 	}	
@@ -48,6 +46,17 @@ void Controller::init()
 
 }
 
+Controller::~Controller()
+{
+	ROS_INFO("Deleting node");
+}
+
+
+void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
+{
+	ROS_INFO("I heard: ");
+}		
+
 void Controller::write_serial_command(char command)
 {
 	fflush(stdout);
@@ -57,30 +66,27 @@ void Controller::write_serial_command(char command)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "control");
+	ros::init(argc, argv, "control");
 
+	ROS_INFO("CONTROL NODE CREATED");
+  	//TODO: Determine frequency that it writes.
+	ros::NodeHandle n;
+	ros::Rate loop_rate(10);
 
-  //TODO: Determine frequency that it writes.
-  ros::NodeHandle n;
-  ros::Rate loop_rate(10);
+	Controller PID_control;
 
-  Controller PID_control;
-  PID_control.init();
+	char command;
+	command = 20;
+	
+	while (ros::ok())
+	{
+		PID_control.write_serial_command(command);
 
-  char command;
-  command = 20;
+		ros::spin();
 
-  while (ros::ok())
-  {
-//	command = motors.step();
-	PID_control.write_serial_command(command);
-  //  	ROS_INFO("%s", msg.data.c_str());
-
-	ros::spinOnce();
-
-	loop_rate.sleep();
-  }
-  return 0;
+		loop_rate.sleep();
+	}
+	return 0;
 }
 
 
