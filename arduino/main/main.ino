@@ -2,6 +2,7 @@
 
 //#define USBCON //uses Tx1 (see SabertoothSimplified.h)
 #define ledPin 13
+#define IN_BUFF_SIZE 8
 //#include <SabertoothSimplified.h>
 #include "encoders.h"
 #include "fixedpoint.h"
@@ -51,7 +52,8 @@ int PID_count;
 boolean new_data = false;
 String inputString = "";         // a String to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
-
+int counter = 0;
+int databuff[IN_BUFF_SIZE];
 
 void setup() {
     Serial.begin(9600);      // Serial com for data output
@@ -170,32 +172,42 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 }
 
 
-void serialEvent()
+void serialEvent() 
 {
-  String data;
-  int inData[2];
-
-  while (Serial.available())
+  while (Serial.available()) 
   {
-        digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging freq  
-
-    for (int n = 0; n < 2;n++)
+    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+    // get the new byte:
+    databuff[counter] = (int)Serial.read();;
+    counter++;
+    if (counter == IN_BUFF_SIZE)
     {
-      inData[n] = Serial.read();
+      counter = 0;
+      int m1_sign = databuff[0]; 
+      int m1_hund = databuff[1] - '0'; 
+      int m1_tens = databuff[2] - '0'; 
+      int m1_ones = databuff[3] - '0';
+      int m2_sign = databuff[4]; 
+      int m2_hund = databuff[5] - '0'; 
+      int m2_tens = databuff[6] - '0'; 
+      int m2_ones = databuff[7] - '0';
+      RPM_ref_m1 = m1_hund*100 + m1_tens*10 + m1_ones;
+      RPM_ref_m2 = m2_hund*100 + m2_tens*10 + m2_ones;
+      
+      // re-initalise PID for new reference command
+      wheelCtrl1.pid.init();
+      wheelCtrl2.pid.init();
+      if (m1_sign == '-')
+      {
+        RPM_ref_m1 = -RPM_ref_m1;
+      }
+      if (m2_sign == '-')
+      {
+         RPM_ref_m2 = -RPM_ref_m2;
+      }
+      //Serial.println(RPM_ref_m1);      Serial.println(RPM_ref_m2);
+      databuff[IN_BUFF_SIZE] = {0};
     }
-
-  //  data = Serial.read();
-  RPM_ref_m1 = inData[0];
-    RPM_ref_m2 = inData[1];
-
-  
-
-    
-
-    // add it to the inputString:
-    // if the incoming character is a newline, set a flag so the main loop can
-    // do something about it:
-
   }
 }
    
