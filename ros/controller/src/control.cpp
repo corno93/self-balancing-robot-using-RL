@@ -7,8 +7,8 @@
 #include <wiringSerial.h>
 #include <wiringPi.h>
 #include <sensor_msgs/Imu.h>
-
-
+#include <tf/LinearMath/Matrix3x3.h>
+//#include "tf/transform_datatypes.h"
 
 class Controller
 {
@@ -18,9 +18,10 @@ class Controller
 		~Controller();
 		void init();
 		void write_serial_command(char command);
-	
-		//Ros Node Handle (subscribes to IMU /data topic)
+
+		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
+		ros::Subscriber sub;
 		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
 		
 		//serialPutchar parameter
@@ -32,8 +33,8 @@ class Controller
 Controller::Controller()
 {
 	//Ros Init (subscribe to IMU topic)
-	ros::Subscriber sub = n.subscribe("/data", 1000, &Controller::IMU_callback, this);
-
+	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
+	
 	//Serial Init
 	if ((fd = serialOpen("/dev/ttyACM1",9600))<0)
 	{
@@ -54,7 +55,14 @@ Controller::~Controller()
 
 void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 {
-	ROS_INFO("I heard: ");
+	ROS_INFO("IMU Seq: [%d]", msg->header.seq);
+	ROS_INFO("IMU orientation x: [%f], y: [%f], z: [%f], w: [%f]", msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
+	
+	tf::Quaternion q(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
+	double roll, pitch, yaw;
+	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+	ROS_INFO("THE PITCH IS: %f", pitch*(180/M_PI));
+
 }		
 
 void Controller::write_serial_command(char command)
