@@ -1,5 +1,3 @@
-//THIS IS THE PID CONTROL NODE
-
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
@@ -8,7 +6,6 @@
 #include <wiringPi.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/LinearMath/Matrix3x3.h>
-//#include "tf/transform_datatypes.h"
 
 class Controller
 {
@@ -17,7 +14,7 @@ class Controller
 		Controller();
 		~Controller();
 		void init();
-		void write_serial_command(char command);
+		void write_serial_command(char* command);
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
@@ -36,7 +33,7 @@ Controller::Controller()
 	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
 	
 	//Serial Init
-	if ((fd = serialOpen("/dev/ttyACM1",9600))<0)
+	if ((fd = serialOpen("/dev/ttyACM0",9600))<0)
 	{
 		ROS_INFO("Unable to open serial device");
 	}	
@@ -65,10 +62,10 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 
 }		
 
-void Controller::write_serial_command(char command)
+void Controller::write_serial_command(char* command)
 {
 	fflush(stdout);
-	serialPutchar(fd, command);
+	serialPuts(fd, command);
 	
 }
 
@@ -83,8 +80,7 @@ int main(int argc, char **argv)
 
 	Controller PID_control;
 
-	char command;
-	command = 20;
+	char* command = "+100+100";
 	
 	while (ros::ok())
 	{
