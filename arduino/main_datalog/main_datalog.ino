@@ -55,6 +55,15 @@ boolean stringComplete = false;  // whether the string is complete
 int counter = 0;
 int databuff[IN_BUFF_SIZE];
 
+
+//DATA LOGGING VARIBALES
+int data_cntr = 0;
+int *data_ptr;
+#define DATA_LOG_BUFF 1000
+int ISR4_cntr = 0;
+
+
+
 void setup() {
     Serial.begin(9600);      // Serial com for data output
   //  SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
@@ -62,7 +71,7 @@ void setup() {
     clearEncoderCount();  //Serial.println("Encoders Cleared...");
     pinMode(ledPin, OUTPUT);
     timer3_interrupt_setup(); //encoders read and RPM calcs
- // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
+    timer4_interrupt_setup(); 
 
  // PWM SETTINGS
    TCCR2B &=~7;    //clear
@@ -76,17 +85,32 @@ void setup() {
     new_data = true;
     analogWrite(M1pin, 128);  
     analogWrite(M2pin, 128);
+    inputString.reserve(200);
 
+    // set malloc
+    data_ptr = (int *) malloc(DATA_LOG_BUFF);
 
-  /* char str[]  = "-123&-46";
-   char* cmd = strtok(str,"&");
-   int RPM_ref_m1 = atoi(cmd);
-   cmd = strtok (NULL, "&");
-   int RPM_ref_m2 = atoi(cmd);
-  Serial.println(RPM_ref_m1);    Serial.println(RPM_ref_m2);    */
-  
+    
+    /*//malloc example
+    int counter;
+    data_ptr = (int *) malloc(1000);
 
+    for (int i =0; i < 15; i ++)
+    {
+      *(data_ptr+i) = i;
+    }
 
+  //  Serial.println(*data_ptr+5);
+    free(data_ptr);
+
+    //print eg
+    for (int i = 0; i < 15; i++)
+    {
+      Serial.println(*data_ptr+i);
+    }
+    */
+    
+    
 
 }
 
@@ -160,6 +184,9 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*3000)/1920;
     RPM_actual_m2 = (encoder2count*3000)/1920;
+    *(data_ptr+data_cntr) = RPM_actual_m1;
+    data_cntr++;
+
     encoder1count = 0;
     encoder2count = 0;
     clearEncoderCount(); 
@@ -208,3 +235,61 @@ void serialEvent()
     }
   }
 }
+
+// TESTER INTERRUPT
+void timer4_interrupt_setup()
+{
+  // initialize timer1 
+  noInterrupts();           // disable all interrupts
+  TCCR4A = 0;
+  TCCR4B = 0;
+
+  // Set timer1_counter to the correct value for our interrupt interval
+  //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
+  //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
+  //timer3_counter = 59286;   //10hz ints at 256 prescale
+  timer4_counter = 3036;   //40536: 10hz ints at 64 prescale
+  //timer3_counter = 45536;     //100hz at 8 prescale
+  
+  TCNT4 = timer4_counter;   // preload timer
+  TCCR4B &=~7; //clear
+ // TCCR4B |= (1 << CS11);    //8 prescaler
+  TCCR4B |= (1 << CS12);    // 256 prescaler 
+ //TCCR3B |= (1 << CS11);    // 64 prescaler 
+ //TCCR3B |= (1 << CS10);    // 64 prescaler 
+  TIMSK4 |= (1 << TOIE4);   // enable timer overflow interrupt
+}
+
+
+  
+ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
+{
+
+  TCNT4 = timer4_counter;   // preload timer
+  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+  ISR4_cntr++;
+
+  if(ISR4_cntr == 5)
+  {
+
+    //stop motors
+     analogWrite(M1pin, 128);
+     analogWrite(M2pin, 128);
+  
+    // free array
+    free(data_ptr);
+  
+    //print array to serial
+    for (int i = 0; i <DATA_LOG_BUFF ; i++)
+    {
+      Serial.println(*(data_ptr + i));
+    }
+    
+
+  }
+
+
+
+}
+
+   
