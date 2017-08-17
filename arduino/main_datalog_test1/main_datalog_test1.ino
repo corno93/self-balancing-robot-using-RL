@@ -284,8 +284,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
     RPM_ref_m2 = -100;
   }else if (ISR4_cntr == 8)
   {
-  //  *(data_ptr_M1+data_cntr) = 9998;
-    *(data_ptr_M2+data_cntr) = 9998;
+    *(data_ptr_M1+data_cntr) = 9998;
+  //  *(data_ptr_M2+data_cntr) = 9998;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
@@ -293,8 +293,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
     RPM_ref_m2 = 0;
   }else if(ISR4_cntr == 10)
   {
-  //  *(data_ptr_M1+data_cntr) = 9910;
-    *(data_ptr_M2+data_cntr) = 9910;
+    *(data_ptr_M1+data_cntr) = 9910;
+  //  *(data_ptr_M2+data_cntr) = 9910;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     //stop motors
@@ -316,7 +316,7 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
 //    {
 //      Serial.println(*(data_ptr_M2 + i));
 //    }
-//    Serial.println("Finished");
+    Serial.println("Finished");
 
     free(data_ptr_M1);
    // free(data_ptr_M2);
