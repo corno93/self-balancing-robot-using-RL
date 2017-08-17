@@ -25,7 +25,7 @@ int saturation(int cmd);
 // TODO: test derivative term for stability
 // Can't really inspect derivative term without a bigger P
 //PID motor1(0x0000A000,0x00000200,0x00000100);
-WheelController wheelCtrl1(0x0000B000,0x00000200,0x00000100);
+WheelController wheelCtrl1(0x0000A000,0x00000000,0x00000000);
 WheelController wheelCtrl2(0x0000A000,0x00000200,0x00000100);
 
 //PID motor2(0,0,0);
@@ -57,9 +57,10 @@ int databuff[IN_BUFF_SIZE];
 
 
 //DATA LOGGING VARIBALES
-int data_cntr = 0;
-int *data_ptr;
-#define DATA_LOG_BUFF 1000
+int data_cntr;
+int *data_ptr_M1;
+int *data_ptr_M2;
+#define DATA_LOG_BUFF 600
 int ISR4_cntr = 0;
 
 
@@ -81,36 +82,19 @@ void setup() {
   
     interrupts();
     RPM_ref_m1 = 60;
-    RPM_ref_m2 = -60;
-    new_data = true;
+    RPM_ref_m2 = 60;
     analogWrite(M1pin, 128);  
     analogWrite(M2pin, 128);
     inputString.reserve(200);
 
     // set malloc
-    data_ptr = (int *) malloc(DATA_LOG_BUFF);
+    data_ptr_M1 = (int *) malloc(DATA_LOG_BUFF);
+  //  data_ptr_M2 = (int *) malloc(DATA_LOG_BUFF);
+    data_cntr = 0;
+    *(data_ptr_M1+data_cntr) = 9990;
+  //  *(data_ptr_M2+data_cntr) = 9990;
+    data_cntr++;
 
-    
-    /*//malloc example
-    int counter;
-    data_ptr = (int *) malloc(1000);
-
-    for (int i =0; i < 15; i ++)
-    {
-      *(data_ptr+i) = i;
-    }
-
-  //  Serial.println(*data_ptr+5);
-    free(data_ptr);
-
-    //print eg
-    for (int i = 0; i < 15; i++)
-    {
-      Serial.println(*data_ptr+i);
-    }
-    */
-    
-    
 
 }
 
@@ -125,14 +109,14 @@ void loop() {
 
        if (PID_flag)
      {
-        start = micros();
+      //  start = micros();
         PID_flag = false;
 
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
-        analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+        analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, -RPM_ref_m2));
 
         // time elapsed debug
-        end_ = micros() - start;
+    //    end_ = micros() - start;
         //Serial.println(end_);
         
      }
@@ -184,7 +168,9 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*3000)/1920;
     RPM_actual_m2 = (encoder2count*3000)/1920;
-    *(data_ptr+data_cntr) = RPM_actual_m1;
+    
+    *(data_ptr_M1 + data_cntr) = RPM_actual_m1;
+  //  *(data_ptr_M2 + data_cntr) = RPM_actual_m2;
     data_cntr++;
 
     encoder1count = 0;
@@ -203,7 +189,7 @@ void serialEvent()
   {
     digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
     // get the new byte:
-    databuff[counter] = (int)Serial.read();;
+    databuff[counter] = (int)Serial.read();
     counter++;
     if (counter == IN_BUFF_SIZE)
     {
@@ -266,26 +252,76 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
 {
 
   TCNT4 = timer4_counter;   // preload timer
-  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
   ISR4_cntr++;
 
-  if(ISR4_cntr == 5)
+  if(ISR4_cntr == 2)
   {
-
+    *(data_ptr_M1+data_cntr) = 9992;
+ //   *(data_ptr_M2+data_cntr) = 9992;
+    data_cntr++;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    RPM_ref_m1 = -60;
+    RPM_ref_m2 = -60;
+  }else if (ISR4_cntr == 4)
+  {
+    *(data_ptr_M1+data_cntr) = 9994;
+  //  *(data_ptr_M2+data_cntr) = 9994;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = 100;
+    RPM_ref_m2 = 100;
+  }else if (ISR4_cntr == 6)
+  {
+    *(data_ptr_M1+data_cntr) = 9996;
+   // *(data_ptr_M2+data_cntr) = 9996;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = -100;
+    RPM_ref_m2 = -100;
+  }else if (ISR4_cntr == 8)
+  {
+  //  *(data_ptr_M1+data_cntr) = 9998;
+    *(data_ptr_M2+data_cntr) = 9998;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+  }else if(ISR4_cntr == 10)
+  {
+  //  *(data_ptr_M1+data_cntr) = 9910;
+    *(data_ptr_M2+data_cntr) = 9910;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
     //stop motors
-     analogWrite(M1pin, 128);
-     analogWrite(M2pin, 128);
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+     //analogWrite(M1pin, 128);
+     //analogWrite(M2pin, 128);
   
     // free array
-    free(data_ptr);
-  
-    //print array to serial
-    for (int i = 0; i <DATA_LOG_BUFF ; i++)
+    //print arrays to serial
+    Serial.println("RPM for Motor 1: ");
+    for (int i = 0; i < DATA_LOG_BUFF; i++)
     {
-      Serial.println(*(data_ptr + i));
+      Serial.println(*(data_ptr_M1 + i));
     }
     
+//    Serial.println("RPM for Motor 2: ");
+//    for (int i = 0; i < DATA_LOG_BUFF; i++)
+//    {
+//      Serial.println(*(data_ptr_M2 + i));
+//    }
+//    Serial.println("Finished");
 
+    free(data_ptr_M1);
+   // free(data_ptr_M2);
+
+   // noInterrupts();           // disable all interrupts
   }
 
 
