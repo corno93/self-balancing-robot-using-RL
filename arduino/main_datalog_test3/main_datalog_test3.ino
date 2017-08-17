@@ -11,6 +11,7 @@
 
 #define M1pin 12
 #define M2pin 11
+#define STOP 128
 
 
 //DT VARIBALES
@@ -18,14 +19,12 @@ unsigned long start = 0;
 unsigned long end_ = 0;
 
 
-int saturation(int cmd);
-
 //OBJECT INSTANCES
 //SabertoothSimplified ST;
 // TODO: test derivative term for stability
 // Can't really inspect derivative term without a bigger P
-//PID motor1(0x0000A000,0x00000200,0x00000100);
-WheelController wheelCtrl1(0x00006200,0x00005000,0x00000100);
+//PID motor1(0x00050000,0x00000000,0x00000000);
+WheelController wheelCtrl1(0x00008000,0x00000A00,0x00000000);
 WheelController wheelCtrl2(0x0000A000,0x00000200,0x00000100);
 
 //PID motor2(0,0,0);
@@ -80,11 +79,16 @@ void setup() {
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
-    interrupts();
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
-    analogWrite(M1pin, 128);  
-    analogWrite(M2pin, 128);
+    analogWrite(M1pin, STOP);  
+    analogWrite(M2pin, STOP);
+
+    // 5 second delay to let motors come to complete rest
+   // delay(5000);
+    interrupts();
+
+    
     inputString.reserve(200);
 
     // set malloc
@@ -92,7 +96,7 @@ void setup() {
   //  data_ptr_M2 = (int *) malloc(DATA_LOG_BUFF);
     data_cntr = 0;
     *(data_ptr_M1+data_cntr) = 9990;
- //   *(data_ptr_M2+data_cntr) = 9990;
+  //  *(data_ptr_M2+data_cntr) = 9990;
     data_cntr++;
 
 
@@ -104,6 +108,7 @@ void loop() {
   int time_elapsed= 0;
   int start, end_;
   int n;
+
 
      //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
 
@@ -138,8 +143,8 @@ void timer3_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
-  //timer3_counter = 45536;     //100hz at 8 prescale
+  //timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
+  timer3_counter = 45536;     //100hz at 8 prescale
   
   TCNT3 = timer3_counter;   // preload timer
   TCCR3B &=~7; //clear
@@ -157,6 +162,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   TCNT3 = timer3_counter;   // preload timer
 
+
   encoder1count = readEncoder(1); 
   encoder2count = readEncoder(2);
 
@@ -170,7 +176,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     RPM_actual_m2 = (encoder2count*3000)/1920;
     
     *(data_ptr_M1 + data_cntr) = RPM_actual_m1;
- //   *(data_ptr_M2 + data_cntr) = RPM_actual_m2;
+  //  *(data_ptr_M2 + data_cntr) = RPM_actual_m2;
     data_cntr++;
 
     encoder1count = 0;
@@ -187,7 +193,7 @@ void serialEvent()
 {
   while (Serial.available()) 
   {
-    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+    //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
     // get the new byte:
     databuff[counter] = (int)Serial.read();
     counter++;
@@ -234,7 +240,7 @@ void timer4_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer4_counter = 3036;   //40536: 10hz ints at 64 prescale
+  timer4_counter = 49911;   //49911: 4hz ints at 256 prescale
   //timer3_counter = 45536;     //100hz at 8 prescale
   
   TCNT4 = timer4_counter;   // preload timer
@@ -248,72 +254,102 @@ void timer4_interrupt_setup()
 
 
   
-ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
+ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
 {
 
   TCNT4 = timer4_counter;   // preload timer
-  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
   ISR4_cntr++;
 
-  if(ISR4_cntr == 1)
+  if(ISR4_cntr == 2)
   {
     *(data_ptr_M1+data_cntr) = 9991;
  //   *(data_ptr_M2+data_cntr) = 9991;
     data_cntr++;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
-    RPM_ref_m1 = 50;
-    RPM_ref_m2 = 50;
-  }else if (ISR4_cntr == 2)
+    RPM_ref_m1 = 60;
+    RPM_ref_m2 = 60;
+  }else if (ISR4_cntr == 4)
   {
     *(data_ptr_M1+data_cntr) = 9992;
   //  *(data_ptr_M2+data_cntr) = 9992;
-    data_cntr++;
-    wheelCtrl1.pid.init();
-    wheelCtrl2.pid.init();
-    RPM_ref_m1 = -100;
-    RPM_ref_m2 = -100;
-  }else if (ISR4_cntr == 4)
-  {
-    *(data_ptr_M1+data_cntr) = 9994;
- //   *(data_ptr_M2+data_cntr) = 9994;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-    RPM_ref_m1 = 150;
-    RPM_ref_m2 = 150;
+    RPM_ref_m1 = -30;
+    RPM_ref_m2 = -30;
   }else if (ISR4_cntr == 6)
   {
-    *(data_ptr_M1+data_cntr) = 9996;
-//    *(data_ptr_M2+data_cntr) = 9996;
+    *(data_ptr_M1+data_cntr) = 9993;
+   // *(data_ptr_M2+data_cntr) = 9993;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-    RPM_ref_m1 = -50;
-    RPM_ref_m2 = -50;
-  }else if(ISR4_cntr == 7)
+    RPM_ref_m1 = 120;
+    RPM_ref_m2 = 120;
+  }else if (ISR4_cntr == 8)
+  {
+    *(data_ptr_M1+data_cntr) = 9994;
+  //  *(data_ptr_M2+data_cntr) = 9994;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = -60;
+    RPM_ref_m2 = -60;
+  }else if(ISR4_cntr == 10)
+  {
+    *(data_ptr_M1+data_cntr) = 9995;
+  //  *(data_ptr_M2+data_cntr) = 9995;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = 30;
+    RPM_ref_m2 = 30;
+  }else if(ISR4_cntr == 12)
+  {
+    *(data_ptr_M1+data_cntr) = 9996;
+  //  *(data_ptr_M2+data_cntr) = 9996;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = 90;
+    RPM_ref_m2 = 90;
+  }else if(ISR4_cntr == 14)
   {
     *(data_ptr_M1+data_cntr) = 9997;
-//    *(data_ptr_M2+data_cntr) = 9997;
+  //  *(data_ptr_M2+data_cntr) = 9997;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-    RPM_ref_m1 = 200;
-    RPM_ref_m2 = 200;
-  }else if(ISR4_cntr == 9)
-  {
-    *(data_ptr_M1+data_cntr) = 9999;
-//    *(data_ptr_M2+data_cntr) = 9999;
-    data_cntr++;
-    wheelCtrl1.pid.init();
-    wheelCtrl2.pid.init();
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
-  }else if (ISR4_cntr == 10)
+  }else if(ISR4_cntr == 16)
   {
-    
-     //analogWrite(M1pin, 128);
-     //analogWrite(M2pin, 128);
+    *(data_ptr_M1+data_cntr) = 9998;
+  //  *(data_ptr_M2+data_cntr) = 9998;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = -90;
+    RPM_ref_m2 = -90;
+    }else if(ISR4_cntr == 18)
+  {
+    *(data_ptr_M1+data_cntr) = 9910;
+  //  *(data_ptr_M2+data_cntr) = 9998;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
+    data_cntr++;
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+    }else if(ISR4_cntr == 20)
+  {
+    *(data_ptr_M1+data_cntr) = 9900;
+  //  *(data_ptr_M2+data_cntr) = 9900;
+
+
+     //analogWrite(M1pin, STOP);
+     //analogWrite(M2pin, STOP);
   
     // free array
     //print arrays to serial
@@ -330,13 +366,11 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
 //    }
     Serial.println("Finished");
 
- //   free(data_ptr_M1);
-    free(data_ptr_M2);
+    free(data_ptr_M1);
+   // free(data_ptr_M2);
 
    // noInterrupts();           // disable all interrupts
   }
-
-
 
 }
 

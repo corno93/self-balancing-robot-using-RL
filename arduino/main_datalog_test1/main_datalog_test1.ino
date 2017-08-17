@@ -11,6 +11,7 @@
 
 #define M1pin 12
 #define M2pin 11
+#define STOP 128
 
 
 //DT VARIBALES
@@ -25,7 +26,7 @@ int saturation(int cmd);
 // TODO: test derivative term for stability
 // Can't really inspect derivative term without a bigger P
 //PID motor1(0x0000A000,0x00000200,0x00000100);
-WheelController wheelCtrl1(0x0000A000,0x00000000,0x00000000);
+WheelController wheelCtrl1(0x00006200,0x00001000,0x00001000);
 WheelController wheelCtrl2(0x0000A000,0x00000200,0x00000100);
 
 //PID motor2(0,0,0);
@@ -80,11 +81,15 @@ void setup() {
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
-    interrupts();
     RPM_ref_m1 = 60;
     RPM_ref_m2 = 60;
-    analogWrite(M1pin, 128);  
-    analogWrite(M2pin, 128);
+    analogWrite(M1pin, STOP);  
+    analogWrite(M2pin, STOP);
+
+    //delay(100000);
+    interrupts();
+
+    
     inputString.reserve(200);
 
     // set malloc
@@ -104,6 +109,7 @@ void loop() {
   int time_elapsed= 0;
   int start, end_;
   int n;
+
 
      //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
 
@@ -138,8 +144,8 @@ void timer3_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
-  //timer3_counter = 45536;     //100hz at 8 prescale
+  //timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
+  timer3_counter = 45536;     //100hz at 8 prescale
   
   TCNT3 = timer3_counter;   // preload timer
   TCCR3B &=~7; //clear
@@ -295,13 +301,12 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 100Hz
   {
     *(data_ptr_M1+data_cntr) = 9910;
   //  *(data_ptr_M2+data_cntr) = 9910;
-    wheelCtrl1.pid.init();
-    wheelCtrl2.pid.init();
+
     //stop motors
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
-     //analogWrite(M1pin, 128);
-     //analogWrite(M2pin, 128);
+     //analogWrite(M1pin, STOP);
+     //analogWrite(M2pin, STOP);
   
     // free array
     //print arrays to serial
