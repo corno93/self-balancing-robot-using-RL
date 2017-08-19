@@ -5,7 +5,7 @@
 #include "std_msgs/String.h"
 #include <sstream>
 #include "std_srvs/Empty.h"
-#include <cstdlib>
+
 
 
 
@@ -41,8 +41,8 @@ int main(int argc, char **argv)
 		}
 		
 		transform.getBasis().getRPY(roll, pitch, yaw);
-				
-		if (std::abs(pitch) > 1.4)
+		
+		if (pitch > 1.4)
 			{
 				ROS_INFO("RESTART SIMULATION");
 				reset_sim();

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="robot_name" default="balance_platform"/>
+  <arg name="x" default="0"/>
+  <arg name="y" default="0"/>
+  <arg name="z" default=".195"/>
+  <arg name="yaw" default="0"/>
+  <arg name="pitch" default="0.1"/>
+
+  <param name="robot_description" command="$(find xacro)/xacro '$(find rsv_balance_gazebo)/urdf/robot.gazebo.xacro'" />
+  <node  pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model $(arg robot_name) -param robot_description -x $(arg x) -y $(arg y) -z $(arg z) -P $(arg pitch) -Y $(arg yaw)"/>
+
+  <node name="sim_restarter" pkg="restart_sim" type="restart_sim_node" respawn="True" /> 
+
+</launch>
