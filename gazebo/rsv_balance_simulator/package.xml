@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <name>rsv_balance_simulator</name>
+  <version>0.0.1</version>
+  <description>Simulation packages for RoboSavvy's balancing platform.</description>
+  
+  <maintainer email="vmatos@robosavvy.com">Vitor Matos</maintainer>
+  <license>BSD</license>
+  <url type="website">http://wiki.ros.org/Robots/RoboSavvyBalance</url>
+  <url type="repository">https://github.com/robosavvy/rsv_balance_simulator</url>
+  <author email="vmatos@robosavvy.com">Vitor Matos</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <run_depend>rsv_balance_gazebo</run_depend>
+  
+  <export>
+    <metapackage/>
+  </export>
+</package>

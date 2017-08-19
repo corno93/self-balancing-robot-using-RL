@@ -412,21 +412,6 @@ void GazeboRsvBalance::UpdateChild()
   switch (this->current_mode_)
   {
     case BALANCE:
-
-	this->DEBUG_VAR++;
-	if (this->imu_pitch_ > 0.4){
-//		ROS_INFO("setForce of 10");
-      this->joints_[LEFT]->SetForce(0, -10);
-      this->joints_[RIGHT]->SetForce(0, 10);
-	}
-
-//	ROS_INFO("current pitch angle is: %f",this->imu_pitch_);
-//	ROS_INFO("debug variable is: %d", this->DEBUG_VAR);
-//	if (this->imu_pitch_ > 0.9)
-//	{
-//        ROS_INFO("your dead ---> restart !");
-//	}
-
 //      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
 //      this->joints_[RIGHT]->SetForce(0, this->u_control_[balance_control::tauR]);
       break;
