@@ -25,7 +25,7 @@ int saturation(int cmd);
 // TODO: test derivative term for stability
 // Can't really inspect derivative term without a bigger P
 //PID motor1(0x0000A000,0x00000200,0x00000100);
-WheelController wheelCtrl1(0x0000B000,0x00000200,0x00000100);
+WheelController wheelCtrl1(0x00003500,0x00001000,0x00000010);
 WheelController wheelCtrl2(0x0000A000,0x00000200,0x00000100);
 
 //PID motor2(0,0,0);
@@ -65,14 +65,16 @@ void setup() {
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
 
  // PWM SETTINGS
-   TCCR2B &=~7;    //clear
-  TCCR2B |= 2;  //set to prescale of 8 (freq 4000Hz)
+//   TCCR2B &=~7;    //clear
+//  TCCR2B |= 2;  //set to prescale of 8 (freq 4000Hz)
+  TCCR1B = TCCR1B & B11111000 | B00000001; 
+
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
     interrupts();
     RPM_ref_m1 = 60;
-    RPM_ref_m2 = -60;
+    RPM_ref_m2 = 0;
     new_data = true;
     analogWrite(M1pin, 128);  
     analogWrite(M2pin, 128);
@@ -130,8 +132,9 @@ void timer3_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
+  //timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
   //timer3_counter = 45536;     //100hz at 8 prescale
+    timer3_counter = 55536;   //200Hz at 8 prescale
   
   TCNT3 = timer3_counter;   // preload timer
   TCCR3B &=~7; //clear
@@ -158,8 +161,8 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
   {    
 
     ISR3_counter = 0;
-    RPM_actual_m1 = (encoder1count*3000)/1920;
-    RPM_actual_m2 = (encoder2count*3000)/1920;
+    RPM_actual_m1 = (encoder1count*6000)/1920;
+    RPM_actual_m2 = (encoder2count*6000)/1920;
     encoder1count = 0;
     encoder2count = 0;
     clearEncoderCount(); 
