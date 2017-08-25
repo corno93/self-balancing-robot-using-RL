@@ -20,12 +20,8 @@ unsigned long end_ = 0;
 
 
 //OBJECT INSTANCES
-//SabertoothSimplified ST;
-// TODO: test derivative term for stability
-// Can't really inspect derivative term without a bigger P
-//PID motor1(0x00050000,0x00000000,0x00000000);
-WheelController wheelCtrl1(0x00003500,0x00001000,0x00000010);
-WheelController wheelCtrl2(0x00000000,0x00000000,0x00000000);
+WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
+WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
 
 //PID motor2(0,0,0);
 
