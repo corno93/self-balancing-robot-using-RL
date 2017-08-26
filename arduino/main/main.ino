@@ -11,6 +11,7 @@
 
 #define M1pin 12
 #define M2pin 11
+#define STOP 128
 
 
 //DT VARIBALES
@@ -21,20 +22,13 @@ unsigned long end_ = 0;
 int saturation(int cmd);
 
 //OBJECT INSTANCES
-//SabertoothSimplified ST;
-// TODO: test derivative term for stability
-// Can't really inspect derivative term without a bigger P
-//PID motor1(0x0000A000,0x00000200,0x00000100);
-WheelController wheelCtrl1(0x00003500,0x00001000,0x00000010);
-WheelController wheelCtrl2(0x0000A000,0x00000200,0x00000100);
-
-//PID motor2(0,0,0);
+WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
+WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
 
 
 //INTERRUPT VARIABLES
-int timer4_counter;
 int timer3_counter;
-int ISR3_counter=0,ISR4_counter;
+int ISR3_counter=0;
 
 //ENCODER VARIABLES
 signed long encoder1count = 0;
@@ -64,55 +58,29 @@ void setup() {
     timer3_interrupt_setup(); //encoders read and RPM calcs
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
 
- // PWM SETTINGS
-//   TCCR2B &=~7;    //clear
-//  TCCR2B |= 2;  //set to prescale of 8 (freq 4000Hz)
+ // PWM SETTINGS (set timer 1 to 8 prescale)
   TCCR1B = TCCR1B & B11111000 | B00000001; 
 
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
     interrupts();
-    RPM_ref_m1 = 60;
+    RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
     new_data = true;
-    analogWrite(M1pin, 128);  
-    analogWrite(M2pin, 128);
-
-
-  /* char str[]  = "-123&-46";
-   char* cmd = strtok(str,"&");
-   int RPM_ref_m1 = atoi(cmd);
-   cmd = strtok (NULL, "&");
-   int RPM_ref_m2 = atoi(cmd);
-  Serial.println(RPM_ref_m1);    Serial.println(RPM_ref_m2);    */
-  
-
+    analogWrite(M1pin, STOP);  
+    analogWrite(M2pin, STOP);
 
 
 }
 
 void loop() {
-  fixed_point_t pid_output;
-  unsigned char motor_cmd = 0;
-  int time_elapsed= 0;
-  int start, end_;
-  int n;
 
-     //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
-
-       if (PID_flag)
+    if (PID_flag)
      {
-        start = micros();
         PID_flag = false;
-
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
-
-        // time elapsed debug
-        end_ = micros() - start;
-        //Serial.println(end_);
-        
      }
 
 
@@ -157,7 +125,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   ISR3_counter++;
 
-  if (ISR3_counter >=2)   //at 50Hz
+  if (ISR3_counter >=2)   //at 100Hz
   {    
 
     ISR3_counter = 0;
