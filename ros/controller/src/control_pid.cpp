@@ -1,4 +1,3 @@
-
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <stdio.h>
@@ -16,7 +15,7 @@ class Controller
 		Controller();
 		~Controller();
 		void init();
-		void write_serial_command(char* command);
+		void write_serial_command(std::string const& command);
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
@@ -27,12 +26,17 @@ class Controller
 		int fd;
 
 		//IMU variables
-		double roll, pitch = 0, yaw;	
+		double roll;
+		double pitch;
+		double yaw;
 };
 
 
 
 Controller::Controller()
+	:	roll(0.0)
+	    ,	pitch(0.0)
+	    ,	yaw(0.0)
 {
 	//Ros Init (subscribe to IMU topic)
 	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
@@ -46,7 +50,6 @@ Controller::Controller()
 	{
 		ROS_INFO("Unable to start wiringPi");
 	}
-
 }
 
 Controller::~Controller()
@@ -67,10 +70,10 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 
 }		
 
-void Controller::write_serial_command(char* command)
+void Controller::write_serial_command(std::string const& command)
 {
 	fflush(stdout);
-	serialPuts(fd, command);
+	serialPuts(fd, command.c_str());
 	
 }
 
@@ -134,20 +137,19 @@ int main(int argc, char **argv)
 
 	PID pid(1.0,0.0,0.0);
 
-	char* command = "-100+200";
+	std::string command = "-100+200";
 	float reference = 0;
 	float pid_cmd;
 	ROS_INFO("before ros::ok loop");
 	while (ros::ok())
 	{
-		ros::spin(); //update pitch
+		ros::spinOnce(); //update pitch
 
 		pid_cmd = pid.updatePID(reference, pid.pitch);
 		ROS_INFO("pid_cmd: %f", pid_cmd);	
 		ROS_INFO("pitch in the pid class is: %f", pid.pitch);
 		pid.write_serial_command(command);
 
-		ros::spin(); 	//recieve callback from IMU
 
 		loop_rate.sleep();
 	}
