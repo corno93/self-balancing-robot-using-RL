@@ -94,17 +94,17 @@ std::string Controller::motor_cmd_generator(float cmd)
 {
 	std::string m1, m2, result;
 	float cmd_abs = std::abs(cmd);
-	if (std::abs(cmd) >= 100)
+	if (cmd_abs >= 100)
 	{	
 		m1 = patch::to_string(cmd_abs);
-//TODO: boost vs string steam...who preforms best?!		
+//TODO: boost vs string stream...who preforms best?!		
 //		m1 = boost::lexical_cast<std::string>(cmd);
 		m2 = m1;
-	} else if (std::abs(cmd) >= 10)
+	} else if (cmd_abs >= 10)
 	{
 		m1 = "0" + patch::to_string(cmd_abs);
 		m2 = m1;
-	} else if (std::abs(cmd) >= 1)
+	} else if (cmd_abs >= 0)
 	{
 		m1 = "00" + patch::to_string(cmd_abs);
 		m2 = m1;
@@ -123,8 +123,7 @@ std::string Controller::motor_cmd_generator(float cmd)
 void Controller::write_serial_command(std::string const& command)
 {
 	fflush(stdout);
-	serialPuts(fd, command.c_str());
-	
+	serialPuts(fd, command.c_str());	
 }
 
 
@@ -194,17 +193,18 @@ int main(int argc, char **argv)
 	std::string command;
 	float pid_cmd;
 
-	float cmd = 60;
+	float cmd = -50;
 	
 	while (ros::ok())
 	{
 		ros::spinOnce(); //update pitch
-
-		//pid_cmd = pid.updatePID();
-		pid_cmd = 60;
-		ROS_INFO("pid_cmd: %f", pid_cmd);	
-		ROS_INFO("pitch in the pid class is: %f", pid.pitch);
+		cmd+=4;
+		pid_cmd = cmd; //pid.updatePID();
+//		ROS_INFO("pid_cmd: %f", pid_cmd);	
+//		ROS_INFO("pitch: %f", pid.pitch);
+		ROS_INFO("pid cmd: %f", pid_cmd);		
 		command = pid.motor_cmd_generator(pid_cmd);
+		std::cout<<"cmd is: "<<command<<std::endl;
 		pid.write_serial_command(command);
 
 
@@ -212,5 +212,3 @@ int main(int argc, char **argv)
 	}
 	return 0;
 }
-
-
