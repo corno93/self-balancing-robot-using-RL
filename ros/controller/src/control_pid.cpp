@@ -6,6 +6,9 @@
 #include <sensor_msgs/Imu.h>
 #include <tf/LinearMath/Matrix3x3.h>
 #include <string>
+#include <sstream>
+#include <stdlib.h>
+#include <iostream>
 
 
 #define PID_delta 0.25
@@ -13,10 +16,11 @@
 
 namespace patch
 {
-	template < typename T > std::string to_string( const T& n)
+	template < typename T > 
+	std::string to_string(const T& t)
 	{
 		std::ostringstream stm;
-		stm << n;
+		stm << t;
 		return stm.str();
 	}
 }
@@ -91,8 +95,10 @@ std::string Controller::motor_cmd_generator(float cmd)
 	std::string m1, m2, result;
 	float cmd_abs = std::abs(cmd);
 	if (std::abs(cmd) >= 100)
-	{
+	{	
 		m1 = patch::to_string(cmd_abs);
+//TODO: boost vs string steam...who preforms best?!		
+//		m1 = boost::lexical_cast<std::string>(cmd);
 		m2 = m1;
 	} else if (std::abs(cmd) >= 10)
 	{
@@ -187,17 +193,18 @@ int main(int argc, char **argv)
 
 	std::string command;
 	float pid_cmd;
-		
+
+	float cmd = 60;
+	
 	while (ros::ok())
 	{
 		ros::spinOnce(); //update pitch
 
 		//pid_cmd = pid.updatePID();
-		pid_cmd = 50;
+		pid_cmd = 60;
 		ROS_INFO("pid_cmd: %f", pid_cmd);	
 		ROS_INFO("pitch in the pid class is: %f", pid.pitch);
 		command = pid.motor_cmd_generator(pid_cmd);
-		ROS_INFO("command gen: %s", command);
 		pid.write_serial_command(command);
 
 
