@@ -35,7 +35,7 @@ class Controller
 		~Controller();
 		void init();
 		void write_serial_command(std::string const& command);
-		std::string motor_cmd_generator(float);
+		std::string motor_cmd_generator(int);
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
@@ -90,10 +90,10 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	pitch = pitch*(180/M_PI);
 }		
 
-std::string Controller::motor_cmd_generator(float cmd)
+std::string Controller::motor_cmd_generator(int cmd)
 {
 	std::string m1, m2, result;
-	float cmd_abs = std::abs(cmd);
+	int cmd_abs = std::abs(cmd);
 	if (cmd_abs >= 100)
 	{	
 		m1 = patch::to_string(cmd_abs);
@@ -167,7 +167,7 @@ float PID::updatePID()
 {
 	float error, error_kp, error_ki, error_kd, derivative;
 	
-	error = pitch_ref - pitch;
+	error = pitch - pitch_ref;//pitch_ref - pitch;
 
 	error_kp = error * kp;
 
@@ -188,21 +188,18 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 	ros::Rate loop_rate(4); //run node at 4 hz
 
-	PID pid(1.0,0.0,0.0);
+	PID pid(2.0,0.0,0.0);
 
 	std::string command;
-	float pid_cmd;
+	int pid_cmd;
 
-	float cmd = -50;
-	
 	while (ros::ok())
 	{
 		ros::spinOnce(); //update pitch
-		cmd+=4;
-		pid_cmd = cmd; //pid.updatePID();
-//		ROS_INFO("pid_cmd: %f", pid_cmd);	
-//		ROS_INFO("pitch: %f", pid.pitch);
-		ROS_INFO("pid cmd: %f", pid_cmd);		
+
+		pid_cmd = static_cast<int>(round(pid.updatePID()));
+		ROS_INFO("pitch: %f", pid.pitch);
+		ROS_INFO("pid cmd: %d", pid_cmd);		
 		command = pid.motor_cmd_generator(pid_cmd);
 		std::cout<<"cmd is: "<<command<<std::endl;
 		pid.write_serial_command(command);
