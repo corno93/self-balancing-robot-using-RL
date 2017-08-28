@@ -5,8 +5,23 @@
 #include <wiringPi.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/LinearMath/Matrix3x3.h>
+#include <string>
+
 
 #define PID_delta 0.25
+
+
+namespace patch
+{
+	template < typename T > std::string to_string( const T& n)
+	{
+		std::ostringstream stm;
+		stm << n;
+		return stm.str();
+	}
+}
+
+
 
 class Controller
 {
@@ -16,6 +31,7 @@ class Controller
 		~Controller();
 		void init();
 		void write_serial_command(std::string const& command);
+		std::string motor_cmd_generator(float);
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
@@ -65,10 +81,38 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	
 	tf::Quaternion q(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
 	//double roll, pitch, yaw;
-	tf::Matrix3x3(q).getRPY(roll,this->pitch, yaw);
-	ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
-
+	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
+	pitch = pitch*(180/M_PI);
 }		
+
+std::string Controller::motor_cmd_generator(float cmd)
+{
+	std::string m1, m2, result;
+	float cmd_abs = std::abs(cmd);
+	if (std::abs(cmd) >= 100)
+	{
+		m1 = patch::to_string(cmd_abs);
+		m2 = m1;
+	} else if (std::abs(cmd) >= 10)
+	{
+		m1 = "0" + patch::to_string(cmd_abs);
+		m2 = m1;
+	} else if (std::abs(cmd) >= 1)
+	{
+		m1 = "00" + patch::to_string(cmd_abs);
+		m2 = m1;
+	}
+	if (cmd > 0)
+	{
+		result = "+" + m1 + "+" + m2;
+	}else
+	{
+		result = "-" + m1 + "-" + m2;
+	}
+	return result;
+
+}
 
 void Controller::write_serial_command(std::string const& command)
 {
@@ -81,15 +125,20 @@ void Controller::write_serial_command(std::string const& command)
 class PID : public Controller
 {
 	public:
-	float kp, ki, kd;
-	float error_prev, integral_sum;
+	float kp;
+	float ki;
+	float kd;
+	float pitch_ref;
+	float error_prev;
+	float integral_sum;
 	PID(float, float, float);
 	~PID();
-	float updatePID(float ref, float actual);
+	float updatePID();
 	void init();
 };
 
-PID::PID(float kp_, float ki_, float kd_)
+PID::PID(float kp_, float ki_, float kd_):
+	pitch_ref(0)
 {
 	kp = kp_;
 	ki = ki_;
@@ -109,10 +158,11 @@ void PID::init()
 	integral_sum = 0;
 }
 
-float PID::updatePID(float ref, float actual)
+float PID::updatePID()
 {
 	float error, error_kp, error_ki, error_kd, derivative;
-	error = ref - actual;
+	
+	error = pitch_ref - pitch;
 
 	error_kp = error * kp;
 
@@ -130,24 +180,24 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "control");
 
-	ROS_INFO("CONTROL NODE CREATED");
-  	//TODO: Determine frequency that it writes.
 	ros::NodeHandle n;
 	ros::Rate loop_rate(4); //run node at 4 hz
 
 	PID pid(1.0,0.0,0.0);
 
-	std::string command = "-100+200";
-	float reference = 0;
+	std::string command;
 	float pid_cmd;
-	ROS_INFO("before ros::ok loop");
+		
 	while (ros::ok())
 	{
 		ros::spinOnce(); //update pitch
 
-		pid_cmd = pid.updatePID(reference, pid.pitch);
+		//pid_cmd = pid.updatePID();
+		pid_cmd = 50;
 		ROS_INFO("pid_cmd: %f", pid_cmd);	
 		ROS_INFO("pitch in the pid class is: %f", pid.pitch);
+		command = pid.motor_cmd_generator(pid_cmd);
+		ROS_INFO("command gen: %s", command);
 		pid.write_serial_command(command);
 
 
