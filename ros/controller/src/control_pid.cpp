@@ -11,7 +11,8 @@
 #include <iostream>
 
 
-#define PID_delta 0.25
+#define FREQUENCY 2
+#define PID_DELTA 0.5
 
 
 namespace patch
@@ -179,10 +180,10 @@ float PID::updatePID()
 
 	error_kp = error * kp;
 
-	integral_sum += error * PID_delta;
+	integral_sum += error * PID_DELTA;
 	error_ki = integral_sum * ki;
 
-	derivative = (error - error_prev)/PID_delta;
+	derivative = (error - error_prev)/PID_DELTA;
 	error_kd = derivative * kd;
 	error_prev = error;
 	
@@ -194,7 +195,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "control");
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(4); //run node at 4 hz
+	ros::Rate loop_rate(FREQUENCY); //run node at 4 hz
 
 	PID pid(1.5,0.0,0.0);
 
@@ -211,7 +212,6 @@ int main(int argc, char **argv)
 		pid_cmd = static_cast<int>(round(pid.updatePID()));
 		ROS_INFO("pid cmd: %d", pid_cmd);		
 		command = pid.motor_cmd_generator(pid_cmd);
-		std::cout<<"cmd is: "<<command<<std::endl;
 		pid.write_serial_command(command);
 
 
