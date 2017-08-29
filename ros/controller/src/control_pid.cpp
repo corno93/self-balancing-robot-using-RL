@@ -36,6 +36,7 @@ class Controller
 		void init();
 		void write_serial_command(std::string const& command);
 		std::string motor_cmd_generator(int);
+		void pitch_tolerance();
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
@@ -126,6 +127,13 @@ void Controller::write_serial_command(std::string const& command)
 	serialPuts(fd, command.c_str());	
 }
 
+void Controller::pitch_tolerance()
+{
+	if (pitch > -3 && pitch < 3)
+	{
+		pitch = 0.0;
+	}
+}
 
 class PID : public Controller
 {
@@ -188,7 +196,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 	ros::Rate loop_rate(4); //run node at 4 hz
 
-	PID pid(2.0,0.0,0.0);
+	PID pid(1.5,0.0,0.0);
 
 	std::string command;
 	int pid_cmd;
@@ -197,8 +205,10 @@ int main(int argc, char **argv)
 	{
 		ros::spinOnce(); //update pitch
 
+		ROS_INFO("pitch before tolerance: %f", pid.pitch);
+		pid.pitch_tolerance();
+		ROS_INFO("pitch after tolerance: %f", pid.pitch);	
 		pid_cmd = static_cast<int>(round(pid.updatePID()));
-		ROS_INFO("pitch: %f", pid.pitch);
 		ROS_INFO("pid cmd: %d", pid_cmd);		
 		command = pid.motor_cmd_generator(pid_cmd);
 		std::cout<<"cmd is: "<<command<<std::endl;
