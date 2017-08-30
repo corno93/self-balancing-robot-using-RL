@@ -130,7 +130,7 @@ void Controller::write_serial_command(std::string const& command)
 
 void Controller::pitch_tolerance()
 {
-	if (pitch > -3 && pitch < 3)
+	if (pitch > -1.5 && pitch < 1.5)
 	{
 		pitch = 0.0;
 	}
@@ -149,6 +149,7 @@ class PID : public Controller
 	~PID();
 	float updatePID();
 	void init();
+	int saturate(int);
 };
 
 PID::PID(float kp_, float ki_, float kd_):
@@ -190,14 +191,27 @@ float PID::updatePID()
 	return (error_kp + error_ki + error_kd);
 }
 
+int PID::saturate(int pid_cmd)
+{
+	if (pid_cmd > 90)
+	{
+		pid_cmd = 90;
+	}else if (pid_cmd < -90)
+	{
+		pid_cmd = -90;
+	}
+	return pid_cmd;
+}
+
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "control");
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(FREQUENCY); //run node at 4 hz
+	ros::Rate loop_rate(FREQUENCY); 
 
-	PID pid(1.5,0.0,0.0);
+	PID pid(7.5,0.0,0.5);
 
 	std::string command;
 	int pid_cmd;
@@ -207,11 +221,16 @@ int main(int argc, char **argv)
 		ros::spinOnce(); //update pitch
 
 		ROS_INFO("pitch before tolerance: %f", pid.pitch);
-		pid.pitch_tolerance();
+		//pid.pitch_tolerance();
 		ROS_INFO("pitch after tolerance: %f", pid.pitch);	
+
 		pid_cmd = static_cast<int>(round(pid.updatePID()));
-		ROS_INFO("pid cmd: %d", pid_cmd);		
+		pid_cmd = pid.saturate(pid_cmd/2);
+		ROS_INFO("pid cmd: %d", pid_cmd);
+	
 		command = pid.motor_cmd_generator(pid_cmd);
+		std::cout<<"motor cmd: "<<command<<std::endl;
+
 		pid.write_serial_command(command);
 
 
