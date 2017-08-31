@@ -11,8 +11,8 @@
 #include <iostream>
 
 
-#define FREQUENCY 20
-#define PID_DELTA 0.05
+#define FREQUENCY 100
+#define PID_DELTA 0.01
 
 
 namespace patch
@@ -193,12 +193,12 @@ float PID::updatePID()
 
 int PID::saturate(int pid_cmd)
 {
-	if (pid_cmd > 90)
+	if (pid_cmd > 200)
 	{
-		pid_cmd = 90;
-	}else if (pid_cmd < -90)
+		pid_cmd = 200;
+	}else if (pid_cmd < -200)
 	{
-		pid_cmd = -90;
+		pid_cmd = -200;
 	}
 	return pid_cmd;
 }
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 	ros::Rate loop_rate(FREQUENCY); 
 
-	PID pid(7.0,0.0,0.2);
+	PID pid(6.5,0.0,0.15);
 
 	std::string command;
 	int pid_cmd;
