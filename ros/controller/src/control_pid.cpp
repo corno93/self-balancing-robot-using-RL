@@ -11,8 +11,8 @@
 #include <iostream>
 
 
-#define FREQUENCY 2
-#define PID_DELTA 0.5
+#define FREQUENCY 20
+#define PID_DELTA 0.05
 
 
 namespace patch
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 	ros::Rate loop_rate(FREQUENCY); 
 
-	PID pid(7.5,0.0,0.5);
+	PID pid(7.0,0.0,0.2);
 
 	std::string command;
 	int pid_cmd;
@@ -220,13 +220,13 @@ int main(int argc, char **argv)
 	{
 		ros::spinOnce(); //update pitch
 
-		ROS_INFO("pitch before tolerance: %f", pid.pitch);
-		//pid.pitch_tolerance();
-		ROS_INFO("pitch after tolerance: %f", pid.pitch);	
+		ROS_INFO("%f", pid.pitch);
+		pid.pitch_tolerance();
+		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
 
 		pid_cmd = static_cast<int>(round(pid.updatePID()));
-		pid_cmd = pid.saturate(pid_cmd/2);
-		ROS_INFO("pid cmd: %d", pid_cmd);
+		pid_cmd = pid.saturate(pid_cmd);
+		//ROS_INFO("pid cmd: %d", pid_cmd);
 	
 		command = pid.motor_cmd_generator(pid_cmd);
 		std::cout<<"motor cmd: "<<command<<std::endl;
