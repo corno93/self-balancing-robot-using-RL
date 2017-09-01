@@ -1,0 +1,3 @@
+[submodule "rsv_balance_simulator"]
+	path = rsv_balance_simulator
+	url = https://github.com/robosavvy/rsv_balance_simulator.git
