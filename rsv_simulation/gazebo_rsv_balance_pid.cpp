@@ -19,14 +19,17 @@
 //#include "gazebo_rsv_balance/pid.h"
 
 
-#define PID_DELTA 0.02
-#define FREQ 50
+#define PID_DELTA 0.05
+#define FREQ 20
 
 int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 6.5, ki = 0.0, kd = 3;
+float kp = 0, ki = 0, kd = 0;
+//gazebo::common:Time restart_delta;
+//gazebo::common:Time restart_delta_prev;
+
 
 namespace gazebo
 {
@@ -37,7 +40,7 @@ GazeboRsvBalance::~GazeboRsvBalance() {}
 
 void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
-  //this->pid(0,0,0);
+//  this->pid(0,0,0);
   this->parent_ = _parent;
   this->sdf_ = _sdf;
   this->gazebo_ros_ = GazeboRosPtr(new GazeboRos(_parent, _sdf, "RsvBalancePlugin"));
@@ -95,7 +98,7 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   }
   this->last_update_time_ = this->parent_->GetWorld()->GetSimTime();
   // Variable that control RL algorithm updates
-  this->rl_update_time = this->parent_->GetWorld()->GetSimTime();
+  //this->rl_update_time = this->parent_->GetWorld()->GetSimTime();
  
 
   // Command velocity subscriber
@@ -400,19 +403,18 @@ void GazeboRsvBalance::UpdateChild()
 {
   common::Time current_time = this->parent_->GetWorld()->GetSimTime();
   double seconds_since_last_update = (current_time - this->last_update_time_).Double();
- // this->pid(0,0,0);  
+  
   // Only execute control loop on specified rate
-  if (seconds_since_last_update > this->update_period_)
+  if (seconds_since_last_update > PID_DELTA)
   {
-//    if (fabs(this->imu_pitch_) > .9 && this->current_mode_ == BALANCE) {
-//     this->current_mode_ = TRACTOR;
-//    }
+
 //	ROS_INFO("seconds since last update: %f", seconds_since_last_update);
 
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
     this->publishWheelJointState();
+
 /*
     double x_desired[4];
     x_desired[balance_control::theta] = tilt_desired_;
@@ -430,65 +432,77 @@ void GazeboRsvBalance::UpdateChild()
 
     this->last_update_time_ += common::Time(this->update_period_);
   */
-  
+ 
 
+	//variables for switch
+ 	float actual;
+	float error;
+	float error_kp;
+	float error_ki;
+	float error_kd;
+	float derivative;
+	float pid_cmd;
+	
   switch (this->current_mode_)
   {
     case BALANCE:
 
 	//Run RL alg every 2Hz.
 
-	this->current_time_RL = this->parent_->GetWorld()->GetSimTime();
- 	double seconds_since_last_RL_update;
-	seconds_since_last_RL_update = (current_time_RL - this->rl_update_time).Double();
+	//this->current_time_RL = this->parent_->GetWorld()->GetSimTime();
+ 	//double seconds_since_last_RL_update;
+	//seconds_since_last_RL_update = (current_time_RL - this->rl_update_time).Double();
 
 	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
 	{
-		ROS_INFO("Restart pitch is: %f!", this->imu_pitch_*(180/M_PI));
+		this->restart_delta = parent_->GetWorld()->GetSimTime();
+		if (this->restart_delta - this->restart_delta_prev > 0.1)
+		{
+
+		ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
 		integral_sum = 0;
 		error_prev = 0;
+		episode_num++;
+		ROS_INFO("EPISODE NUM: %d", episode_num);
+		}
+		this->restart_delta_prev = this->restart_delta;
 	} 
 
-
-  	// Only execute control loop on specified rate
- 	if (seconds_since_last_RL_update >= PID_DELTA)
- 	{
-		ROS_INFO("senconds since rl update: %f", seconds_since_last_RL_update);
 		
-		float actual = this->imu_pitch_*(180/M_PI);
-		float error = actual - 0;
-		ROS_INFO("actual pitch is: %f", actual);
+		actual = this->imu_pitch_*(180/M_PI);
+		error = actual - 0;
+	//	ROS_INFO("pitch: %f", actual);
 
-		float error_kp = error * kp;
+		error_kp = error * kp;
 		
-		integral_sum += error * seconds_since_last_RL_update;
-		float error_ki = integral_sum * ki;
+		integral_sum += error * seconds_since_last_update;
+		error_ki = integral_sum * ki;
 
-		float derivative = (error - error_prev)/seconds_since_last_RL_update;
-		float error_kd = derivative * kd;
+		derivative = (error - error_prev)/seconds_since_last_update;
+		error_kd = derivative * kd;
 		error_prev = error;
-	
-		float pid_cmd = (error_kp + error_ki + error_kd);
-		float vel_cmd = (pid_cmd );	
-		ROS_INFO("BEFORE SAT: Pid cmd: %f", pid_cmd);
-	
-		if (vel_cmd > 60)
+
+	//	ROS_INFO("error_kp: %f, error_ki: %f, error_kd: %f", error_kp, error_ki, error_kd);	
+
+		pid_cmd = (error_kp + error_ki + error_kd);
+	//	ROS_INFO("pid_cmd: %f", pid_cmd);
+	//	ROS_INFO("p: %f. i: %f. d: %f", kp, ki, kd);	
+		if (pid_cmd > 60)
 		{
-			vel_cmd = 60;
-		}else if (vel_cmd < -60)
+			pid_cmd = 60;
+		}else if (pid_cmd < -60)
 		{
-			vel_cmd = -60;
+			pid_cmd = -60;
 		}
 		
-		this->joints_[LEFT]->SetVelocity(0,-vel_cmd);
-		this->joints_[RIGHT]->SetVelocity(0, vel_cmd);
+		this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
+		this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
 
 	
-		time_step++;
-		this->rl_update_time += common::Time(seconds_since_last_RL_update);
-	}
-	  this->last_update_time_ += common::Time(this->update_period_);
+	//	time_step++;
+ 	 //this->last_update_time_ += common::Time(PID_DELTA);
  	
+
 	
 //	original code is below 2 lines:
 //      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
