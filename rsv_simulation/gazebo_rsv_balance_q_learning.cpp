@@ -3,6 +3,10 @@
  *  Author: Vitor Matos
  *
  *  Based on diff_drive_plugin
+ *
+ *  MODIFICATION: 
+ *  - control segway about pitch angle using a RL q-learning controller
+
  *********************************************************************/
 
 #include "gazebo_rsv_balance/gazebo_rsv_balance.h"
@@ -13,13 +17,173 @@
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
 
-int episode_num = 0;
-int time_step = 0;
+#include <vector>
+#include <time.h>
+#include <cmath>
+#include <algorithm>
 
+#define RL_DELTA 0.05
+#define FREQ 20
+#define STATES 6
+#define ACTIONS 6
+
+//int episode_num = 0;
+//int time_step = 0;
+class reinforcement_learning
+{
+  public:
+    int episode_num = 0;
+    int time_step = 0;
+
+    char actions[ACTIONS] = {10,20,30,-10,-20,-30};
+
+    reinforcement_learning();
+    ~reinforcement_learning();
+
+    std::vector<std::vector<float> > Q;
+
+    char virtual choose_action(char) = 0;
+    void TD_update(int);
+    char get_state(float);
+    char get_next_state(char, char);
+};
+
+reinforcement_learning::reinforcement_learning()
+  :  Q(STATES, std::vector<float>(ACTIONS,0))
+{
+}
+
+reinforcement_learning::~reinforcement_learning()
+{
+}
+
+char reinforcement_learning::choose_action(char)
+{
+}
+
+void reinforcement_learning::TD_update(int)
+{
+}
+
+char reinforcement_learning::get_state(float pitch)
+{
+  if (pitch < -15)
+  {
+    return 0;
+  }else if (pitch < -10 && pitch > -15)
+  {
+    return 1;
+  }else if (pitch < -5 && pitch > -10)
+  {
+    return 2;
+  }else if (pitch < 0 && pitch > -5)
+  {
+    return 3;
+  }else if (pitch < 5 && pitch > 0)
+  {
+    return 4;
+  }else if (pitch < 10 && pitch > 5)
+  {
+    return 5;
+  }else if (pitch < 15 && pitch > 10)
+  {
+    return 6;
+  }else if (pitch > 15)
+  {
+    return 7;
+  }
+}
+
+
+char reinforcement_learning::get_next_state(char cur_state, char action)
+{
+
+
+}
+
+class q_learning: public reinforcement_learning
+{
+  public:
+    q_learning();
+    ~q_learning();
+    std::vector<float> q_row;
+    std::vector<int> max_value_idxs;
+    float epsilon = 0.30;
+
+    int test_counter;
+
+    char choose_action(char);
+    void take_action(int);
+};
+
+q_learning::q_learning()
+{
+//	ROS_INFO("HEY WORLD");
+}
+
+q_learning::~q_learning()
+{
+}
+
+char q_learning::choose_action(char curr_state)
+{
+  float random_choice;
+  float random_num;
+  float max_q;
+ // std::vector<float> q_row;
+ // std::vector<int> max_value_idxs;
+
+  random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
+  //ROS_INFO("random num: %f", random_num);
+
+  
+  if (random_num < epsilon)
+  {
+    //pick randomly
+    random_choice = rand()%ACTIONS;
+    ROS_INFO("random choice: %f", random_choice);
+    return random_choice;
+  }
+  else
+  {
+    //pick best
+    ROS_INFO("yo");
+//    this->q_row = Q[curr_state];
+ //   std::cout<<q_row.size()<<std::endl;
+    return 0;
+/*    for (int i = 0; i < q_row.size(); i++)
+      {
+        std::cout<<q_row[i]<<std::endl;
+      }*/
+
+
+/*    max_q = *std::max_element(q_row.begin(), q_row.end());
+    
+    for (int i = 0; i < q_row.size(); i++)
+      {
+        if (max_q == q_row[i])
+          {
+            max_value_idxs.push_back(i);     
+	  }
+      }
+    if (max_value_idxs.size() == 1)
+      {
+        return max_value_idxs[0];
+      }else if (max_value_idxs.size() > 1)
+      {
+        random_choice = rand()%(max_value_idxs.size());
+        return random_choice;
+      }*/
+  }
+}
+
+
+
+q_learning controller;
 
 namespace gazebo
 {
-
+//srand(time(NULL));
 GazeboRsvBalance::GazeboRsvBalance() {}
 
 GazeboRsvBalance::~GazeboRsvBalance() {}
@@ -42,8 +206,8 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   this->gazebo_ros_->getParameter<std::string>(this->odom_frame_id_, "odomFrameId", "odom");
 
   this->gazebo_ros_->getParameter<bool>(this->publish_state_, "publishState", true);
-  this->gazebo_ros_->getParameter<double>(this->update_rate_, "updateRate", 10.0);
-  this->gazebo_ros_->getParameter<double>(this->publish_state_rate_, "publishStateRate", 10);
+  this->gazebo_ros_->getParameter<double>(this->update_rate_, "updateRate", 50.0);
+  this->gazebo_ros_->getParameter<double>(this->publish_state_rate_, "publishStateRate", 50);
   this->gazebo_ros_->getParameter<double>(this->publish_diagnostics_rate_, "publishDiagnosticsRate", 1);
 
   std::map<std::string, OdomSource> odom_options;
@@ -74,7 +238,7 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Control loop timing
   if (this->update_rate_ > 0.0)
   {
-    this->update_period_ = 5.0 / this->update_rate_;	//CHANGED TO 5/10 = 0.5SEC = 2HZ
+    this->update_period_ = 1.0 / this->update_rate_;	//CHANGED TO 5/10 = 0.5SEC = 2HZ
   }
   else
   {
@@ -83,7 +247,7 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   }
   this->last_update_time_ = this->parent_->GetWorld()->GetSimTime();
   // Variable that control RL algorithm updates
-  this->rl_update_time = this->parent_->GetWorld()->GetSimTime();
+  //this->rl_update_time = this->parent_->GetWorld()->GetSimTime();
  
 
   // Command velocity subscriber
@@ -144,15 +308,14 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   this->tilt_desired_ = 0;
   this->u_control_ = this->state_control_.getControl();
 
-	ROS_INFO("does this repeat 1");
 
   this->alive_ = true;
   // start custom queue
   this->callback_queue_thread_ = boost::thread(boost::bind(&GazeboRsvBalance::QueueThread, this));
   // listen to the update event (broadcast every simulation iteration)
-  this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboRsvBalance::UpdateChild, this));
+ 
+ this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&GazeboRsvBalance::UpdateChild, this));
 
-	ROS_INFO("does this bit of code repeat? 2 ");
 }
 
 /*!
@@ -389,94 +552,59 @@ void GazeboRsvBalance::UpdateChild()
 {
   common::Time current_time = this->parent_->GetWorld()->GetSimTime();
   double seconds_since_last_update = (current_time - this->last_update_time_).Double();
-  
-
-  // Only execute control loop on specified rate
-  if (seconds_since_last_update > this->update_period_)
+  char action_idx;  
+  float pitch;
+  char curr_state;
+// Only execute control loop on specified rate
+  if (seconds_since_last_update > RL_DELTA)
   {
-//    if (fabs(this->imu_pitch_) > .9 && this->current_mode_ == BALANCE) {
-//     this->current_mode_ = TRACTOR;
-//    }
-//	ROS_INFO("seconds since last update: %f", seconds_since_last_update);
 
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
     this->publishWheelJointState();
-/*
-    double x_desired[4];
-    x_desired[balance_control::theta] = tilt_desired_;
-    x_desired[balance_control::dx] = x_desired_;
-    x_desired[balance_control::dphi] = rot_desired_;
-    x_desired[balance_control::dtheta] = 0;
-
-    double y_fbk[4];
-    y_fbk[balance_control::theta] = this->imu_pitch_;
-    y_fbk[balance_control::dx] = this->feedback_v_;
-    y_fbk[balance_control::dphi] = this->feedback_w_;
-    y_fbk[balance_control::dtheta] = this->imu_dpitch_;
-
-    this->state_control_.stepControl(seconds_since_last_update, x_desired, y_fbk);
-
-    this->last_update_time_ += common::Time(this->update_period_);
-  */
-  
 
   switch (this->current_mode_)
   {
     case BALANCE:
 
-	//Run RL alg every 2Hz.
+	//increment timestep
+	controller.time_step++;
 
-	this->current_time_RL = this->parent_->GetWorld()->GetSimTime();
- 	double seconds_since_last_RL_update;
-	seconds_since_last_RL_update = (current_time_RL - this->rl_update_time).Double();
-
-  	// Only execute control loop on specified rate
- 	if (seconds_since_last_RL_update >= 0.5)
- 	{
-  		ROS_INFO("time since last rl update %f", seconds_since_last_RL_update);
- 	
-		//increment timestep and episode. TODO SHOULD NOT POLL IMPORTANT VARIABLES LIKE THIS...
-		if (this->imu_pitch_*(180/M_PI) >= 20)
+	// Check whether robot has fallen. Increase episode num is it has.
+	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
+	{
+		this->restart_delta = parent_->GetWorld()->GetSimTime();
+		if (this->restart_delta - this->restart_delta_prev > 0.1)
 		{
-			episode_num++;
-			time_step = 0;
+
+		ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+		controller.episode_num++;
+		controller.time_step = 0;
+		ROS_INFO("EPISODE NUM: %d", controller.episode_num);
 		}
-	
-		ROS_INFO("curent episode number is: %d", episode_num);
-		ROS_INFO("current time step is: %d", time_step);
-		this->DEBUG_VAR++;
-		ROS_INFO("current pitch angle is: %f",this->imu_pitch_*(180/M_PI));
+		this->restart_delta_prev = this->restart_delta;
+	} 
+
+	//get state value
+	pitch = this->imu_pitch_*(180/M_PI);
+	ROS_INFO("pitch: %f", pitch);
+	curr_state = controller.get_state(pitch);
+	ROS_INFO("current state: %d", curr_state);
+
+	// select action
+	action_idx = controller.choose_action(pitch);	
+	ROS_INFO("action selected: %d", action_idx);	
 
 
+	//take action
+	this->joints_[LEFT]->SetVelocity(0,-controller.actions[action_idx]);
+	this->joints_[RIGHT]->SetVelocity(0, controller.actions[action_idx]);
 
-		// choose action based on policy and current state
-
-
-		// take action
-
-		// get next state
-
-		// TD update
-
-		// stats n repeat
-
-
-
-		if(std::abs(this->imu_pitch_*(180/M_PI)) < 30)
-		{
-			ROS_INFO("yooo");
-		}
-
-		this->joints_[LEFT]->SetVelocity(0,5);
-		this->joints_[RIGHT]->SetVelocity(0,-5);	
+	//get next state
 		
-		time_step++;
-		this->rl_update_time += common::Time(0.5);
-	}
-	  this->last_update_time_ += common::Time(this->update_period_);
  	
+
 	
 //	original code is below 2 lines:
 //      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
