@@ -24,8 +24,8 @@
 
 #define RL_DELTA 0.05
 #define FREQ 20
-#define STATES 6
-#define ACTIONS 6
+#define STATES 8
+#define ACTIONS 8
 
 class reinforcement_learning
 {
@@ -33,7 +33,7 @@ class reinforcement_learning
     int episode_num = 0;
     int time_step = 0;
 
-    char actions[ACTIONS] = {10,20,30,-10,-20,-30};
+    char actions[ACTIONS] = {5,10,20,30,-5,-10,-20,-30};
 
     reinforcement_learning();
     ~reinforcement_learning();
@@ -128,9 +128,10 @@ q_learning::~q_learning()
 
 char q_learning::choose_action(char curr_state)
 {
-  float random_choice;
+  int random_choice;
   float random_num;
   float max_q;
+  int action_choice;
  // std::vector<float> q_row;
  // std::vector<int> max_value_idxs;
 
@@ -142,29 +143,17 @@ char q_learning::choose_action(char curr_state)
   {
     //pick randomly
     random_choice = rand()%ACTIONS;
-    ROS_INFO("random choice: %f", random_choice);
+    ROS_INFO("random choice: %d", random_choice);
     return random_choice;
   }
   else
   {
     //pick best
-    ROS_INFO("cur state: %d", curr_state);
-    // this->q_row = Q[curr_state];
-    for (int i = 0; i < 6; i++) {
-        this->q_row[i] = Q[curr_state][i];
-    }
-	ROS_INFO("hey");
+    ROS_INFO("picks best");
+    this->q_row = Q[curr_state];
 
-//    std::cout<<q_row.size()<<std::endl;
-    return 0;
-/*    for (int i = 0; i < q_row.size(); i++)
-      {
-        std::cout<<q_row[i]<<std::endl;
-      }*/
-
-
-/*    max_q = *std::max_element(q_row.begin(), q_row.end());
-    
+    max_q = *std::max_element(q_row.begin(), q_row.end());
+//    ROS_INFO("max_q: %f", max_q);    
     for (int i = 0; i < q_row.size(); i++)
       {
         if (max_q == q_row[i])
@@ -174,12 +163,20 @@ char q_learning::choose_action(char curr_state)
       }
     if (max_value_idxs.size() == 1)
       {
-        return max_value_idxs[0];
-      }else if (max_value_idxs.size() > 1)
-      {
-        random_choice = rand()%(max_value_idxs.size());
-        return random_choice;
-      }*/
+	action_choice = max_value_idxs[0];
+	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
+        max_value_idxs.clear();
+	return max_value_idxs[0];
+      }
+	else if (max_value_idxs.size() > 1)
+      { 
+//	ROS_INFO("random choice for repeated bests");
+//	ROS_INFO("size: %d", max_value_idxs.size());
+        action_choice = rand()%(max_value_idxs.size());
+	max_value_idxs.clear();
+//	ROS_INFO("rnadom choice is: %d", action_choice);
+        return action_choice;
+      }
   }
 }
 
@@ -610,6 +607,8 @@ void GazeboRsvBalance::UpdateChild()
 	//get next state
 		
  	
+	//
+	
 
 	
 //	original code is below 2 lines:
