@@ -30,24 +30,34 @@
 class reinforcement_learning
 {
   public:
-    int episode_num = 0;
-    int time_step = 0;
+    float alpha = 0.3;
+    int episode_num;
+    int time_step;
+    int wins;
+    int loses;
+    float discount_factor;
+    float alpha;
+    float epsilon;
 
-    char actions[ACTIONS] = {5,10,20,30,-5,-10,-20,-30};
-
+    char actions[ACTIONS] = {30,20,10,5,-5,-10,-20,-30};
+    int rewards[STATES] = {0,50,100,1000,1000,100,50,0};
     reinforcement_learning();
     ~reinforcement_learning();
 
     std::vector<std::vector<float> > Q;
 
     char virtual choose_action(char) = 0;
-    void TD_update(int);
+    void TD_update(char, char, char, int);
     char get_state(float);
     char get_next_state(char, char);
+    int get_reward(char);
 };
 
 reinforcement_learning::reinforcement_learning()
-  :  Q(STATES, std::vector<float>(ACTIONS,0))
+  :  Q(STATES, std::vector<float>(ACTIONS,0)), 
+     episode_num(0), time_step(0), wins(0),
+     loses(0), discount_factor(0.3), alpha(0.3)
+     epsilon(0.3);
 {
 }
 
@@ -55,12 +65,27 @@ reinforcement_learning::~reinforcement_learning()
 {
 }
 
+int reinforcement_learning::get_reward(char next_state)
+{
+  return rewards[next_state];
+}
+
 char reinforcement_learning::choose_action(char)
 {
 }
 
-void reinforcement_learning::TD_update(int)
+void reinforcement_learning::TD_update(char curr_state, char action, char next_state, int reward)
 {
+  int max_action_idx;
+  float td_target;
+  float td_error;
+
+  //next_state_idx = get_state_index(next_state);
+  max_action_idx = distance(Q[next_state].begin(), max_element(Q[next_state].begin(), Q[next_state].end()));
+  td_target = reward + discount_factor*Q[next_state][max_action_idx];
+  td_error = td_target - Q[curr_state][action];
+  Q[curr_state][action]+= td_error*alpha;
+
 }
 
 char reinforcement_learning::get_state(float pitch)
@@ -109,7 +134,6 @@ class q_learning: public reinforcement_learning
     ~q_learning();
     std::vector<float> q_row;
     std::vector<int> max_value_idxs;
-    float epsilon = 0.30;
 
     int test_counter;
 
@@ -558,6 +582,8 @@ void GazeboRsvBalance::UpdateChild()
   char action_idx;  
   float pitch;
   char curr_state;
+  char next_state;
+  int reward;
 // Only execute control loop on specified rate
   if (seconds_since_last_update > RL_DELTA)
   {
@@ -605,13 +631,27 @@ void GazeboRsvBalance::UpdateChild()
 	this->joints_[RIGHT]->SetVelocity(0, controller.actions[action_idx]);
 
 	//get next state
-		
+	next_state = 6;	
  	
-	//
-	
+	//get reward
+	reward = controller.get_reward(next_state);
+
+	//TD update
+	controller.TD_update(curr_state, action_idx, next_state, reward);
+
+	//cycle n repeat
+	if(reward == 1000)
+	{
+		controller.wins++;
+	}
+	else if (reward == 0)
+	{
+		controller.loses++;
+	}
+	curr_state = next_state;	
 
 	
-//	original code is below 2 lines:
+	
 //      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
 //      this->joints_[RIGHT]->SetForce(0, this->u_control_[balance_control::tauR]);
       break;
