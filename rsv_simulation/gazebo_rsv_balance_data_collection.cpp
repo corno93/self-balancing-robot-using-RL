@@ -16,19 +16,18 @@
 
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
-//#include "gazebo_rsv_balance/pid.h"
 
 
 #define PID_DELTA 0.05
 #define FREQ 20
 
+#define ACTION int(10)
+
 int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 2, ki = 0, kd = 0.1;
-//gazebo::common:Time restart_delta;
-//gazebo::common:Time restart_delta_prev;
+float kp = 0, ki = 0, kd = 0;
 
 
 namespace gazebo
@@ -442,66 +441,63 @@ void GazeboRsvBalance::UpdateChild()
 	float error_kd;
 	float derivative;
 	float pid_cmd;
-	
+	float pitch;	
   switch (this->current_mode_)
   {
     case BALANCE:
-
-	//Run RL alg every 2Hz.
-
-	//this->current_time_RL = this->parent_->GetWorld()->GetSimTime();
- 	//double seconds_since_last_RL_update;
-	//seconds_since_last_RL_update = (current_time_RL - this->rl_update_time).Double();
-
+	ROS_INFO("Episode num: %d", episode_num);
+	ROS_INFO("Time step: %d", time_step);
+	
 	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
 	{
 		this->restart_delta = parent_->GetWorld()->GetSimTime();
 		if (this->restart_delta - this->restart_delta_prev > 0.1)
 		{
 
-		ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
-		integral_sum = 0;
-		error_prev = 0;
-		episode_num++;
-		ROS_INFO("EPISODE NUM: %d", episode_num);
-		}
-		this->restart_delta_prev = this->restart_delta;
+                ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+                episode_num++;
+                time_step = 0;
+                ROS_INFO("EPISODE NUM: %d", episode_num);
+                }
+                this->restart_delta_prev = this->restart_delta;
 	} 
 
+		//CHECK PITCH
+		pitch = this->imu_pitch_*(180/M_PI);
+		ROS_INFO("pitch: %f", pitch);			
 		
-		actual = this->imu_pitch_*(180/M_PI);
-		error = actual - 0;
-		ROS_INFO("pitch: %f", actual);
-
-		error_kp = error * kp;
-		
-		integral_sum += error * seconds_since_last_update;
-		error_ki = integral_sum * ki;
-
-		derivative = (error - error_prev)/seconds_since_last_update;
-		error_kd = derivative * kd;
-		error_prev = error;
-
-	//	ROS_INFO("error_kp: %f, error_ki: %f, error_kd: %f", error_kp, error_ki, error_kd);	
-
-		pid_cmd = (error_kp + error_ki + error_kd);
-		ROS_INFO("pid_cmd: %f", pid_cmd);
-	//	ROS_INFO("p: %f. i: %f. d: %f", kp, ki, kd);	
-		if (pid_cmd > 60)
+		//APPLY ACTION
+		if (episode_num < 5)
 		{
-			pid_cmd = 60;
-		}else if (pid_cmd < -60)
-		{
-			pid_cmd = -60;
-		}
+		this->joints_[LEFT]->SetVelocity(0,-ACTION);
+		this->joints_[RIGHT]->SetVelocity(0,ACTION);
+		}else if (episode_num >= 5 && episode_num < 10){
+		this->joints_[LEFT]->SetVelocity(0,-15);
+		this->joints_[RIGHT]->SetVelocity(0,15);}
+		else if (episode_num >= 10 && episode_num < 15){
+		this->joints_[LEFT]->SetVelocity(0,-15);
+		this->joints_[RIGHT]->SetVelocity(0,15);}
+		else if (episode_num >= 15 && episode_num < 20){
+		this->joints_[LEFT]->SetVelocity(0,-20);
+		this->joints_[RIGHT]->SetVelocity(0,20);}
+		else if (episode_num >= 20 && episode_num < 25){
+		this->joints_[LEFT]->SetVelocity(0,-25);
+		this->joints_[RIGHT]->SetVelocity(0,25);}
+		else if (episode_num >= 25 && episode_num < 30){
+		this->joints_[LEFT]->SetVelocity(0,-30);
+		this->joints_[RIGHT]->SetVelocity(0,30);}
 		
-		this->joints_[LEFT]->SetForce(0,-pid_cmd);
-		this->joints_[RIGHT]->SetForce(0, pid_cmd);
 
 	
-	//	time_step++;
- 	 //this->last_update_time_ += common::Time(PID_DELTA);
- 	
+		//WAIT X AMOUNT OF TIME
+//		this->cur_time = parent_->GetWorld()->GetSimTime();
+/*		while(cur_time != cur_time + PID_DELTA)
+		{
+			this->cur_time = parent_->GetWorld()->GetSimTime();
+		}
+*/		//CHECK PITCH
+
+		time_step++;	
 
 	
 //	original code is below 2 lines:

@@ -27,8 +27,6 @@
 #define STATES 6
 #define ACTIONS 6
 
-//int episode_num = 0;
-//int time_step = 0;
 class reinforcement_learning
 {
   public:
@@ -91,6 +89,9 @@ char reinforcement_learning::get_state(float pitch)
   }else if (pitch > 15)
   {
     return 7;
+  }else
+  {
+    return 0;
   }
 }
 
@@ -118,7 +119,7 @@ class q_learning: public reinforcement_learning
 
 q_learning::q_learning()
 {
-//	ROS_INFO("HEY WORLD");
+    this->q_row.resize(6);
 }
 
 q_learning::~q_learning()
@@ -147,9 +148,14 @@ char q_learning::choose_action(char curr_state)
   else
   {
     //pick best
-    ROS_INFO("yo");
-//    this->q_row = Q[curr_state];
- //   std::cout<<q_row.size()<<std::endl;
+    ROS_INFO("cur state: %d", curr_state);
+    // this->q_row = Q[curr_state];
+    for (int i = 0; i < 6; i++) {
+        this->q_row[i] = Q[curr_state][i];
+    }
+	ROS_INFO("hey");
+
+//    std::cout<<q_row.size()<<std::endl;
     return 0;
 /*    for (int i = 0; i < q_row.size(); i++)
       {
@@ -183,7 +189,7 @@ q_learning controller;
 
 namespace gazebo
 {
-//srand(time(NULL));
+
 GazeboRsvBalance::GazeboRsvBalance() {}
 
 GazeboRsvBalance::~GazeboRsvBalance() {}
@@ -593,7 +599,7 @@ void GazeboRsvBalance::UpdateChild()
 	ROS_INFO("current state: %d", curr_state);
 
 	// select action
-	action_idx = controller.choose_action(pitch);	
+	action_idx = controller.choose_action(curr_state);	
 	ROS_INFO("action selected: %d", action_idx);	
 
 
