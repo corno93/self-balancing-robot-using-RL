@@ -5,7 +5,7 @@
  *  Based on diff_drive_plugin
  *
  *  MODIFICATION: 
- *  - control segway about pitch angle using a PID controller
+ *  - script to collect data in order to learn transition probabilities
 
  *********************************************************************/
 
@@ -24,7 +24,7 @@
 
 int episode_num = 0;
 int time_step = 0;
-int action = 10;
+int action = -30;
 
 namespace gazebo
 {
@@ -35,7 +35,6 @@ GazeboRsvBalance::~GazeboRsvBalance() {}
 
 void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
-//  this->pid(0,0,0);
   this->parent_ = _parent;
   this->sdf_ = _sdf;
   this->gazebo_ros_ = GazeboRosPtr(new GazeboRos(_parent, _sdf, "RsvBalancePlugin"));
@@ -426,39 +425,45 @@ void GazeboRsvBalance::UpdateChild()
                 episode_num++;
                 time_step = 0;
                 ROS_INFO("Ep:%d", episode_num);
-		if (episode_num % 5 == 0)
+		if (episode_num % 2 == 0)
 			{
-//				action = action+5;
+				action = action+1;
 				ROS_INFO("A:%d", action);
 			}
                 }
                 this->restart_delta_prev = this->restart_delta;
 	}
 
-	
-  pitch = this->imu_pitch_*(180/M_PI);
-  if(std::abs(pitch) > 0 && std::abs(pitch) < 35)
-  {
-
-//	ROS_INFO("Episode num: %d", episode_num);
-	if (time_step % 10 == 0)
+	if (action >= 30)
 	{
-	ROS_INFO("Ts:%d", time_step);		
-	ROS_INFO("Pa:%f", pitch);			
+	//	return 0;
+		while(1){ }
+	}	
 
-	}
 
-	if (episode_num == 0 && time_step == 0)
-	{
-		ROS_INFO("A:%d", action);
-	}
+ 	 pitch = this->imu_pitch_*(180/M_PI);
+	  if(std::abs(pitch) > 0 && std::abs(pitch) < 35)
+ 	 {
+
+	//	ROS_INFO("Episode num: %d", episode_num);
+		if (time_step % 2 == 0)
+		{
+		ROS_INFO("Ts:%d", time_step);		
+		ROS_INFO("Pa:%f", pitch);			
+
+		}
+
+		if (episode_num == 0 && time_step == 0)
+		{
+			ROS_INFO("A:%d", action);
+		}
 	
 
-	//APPLY ACTION
-	this->joints_[LEFT]->SetVelocity(0,-action);
-	this->joints_[RIGHT]->SetVelocity(0, action);
+		//APPLY ACTION
+		this->joints_[LEFT]->SetForce(0,-action);
+		this->joints_[RIGHT]->SetForce(0, action);
 	
-	time_step++;	
+		time_step++;	
   }//end of if between 0 and 35
 	
       break;
