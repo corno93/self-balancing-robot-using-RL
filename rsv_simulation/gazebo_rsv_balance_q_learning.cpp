@@ -30,13 +30,12 @@
 class reinforcement_learning
 {
   public:
-    float alpha = 0.3;
+    float alpha;
     int episode_num;
     int time_step;
     int wins;
     int loses;
     float discount_factor;
-    float alpha;
     float epsilon;
 
     char actions[ACTIONS] = {30,20,10,5,-5,-10,-20,-30};
@@ -56,8 +55,8 @@ class reinforcement_learning
 reinforcement_learning::reinforcement_learning()
   :  Q(STATES, std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_step(0), wins(0),
-     loses(0), discount_factor(0.3), alpha(0.3)
-     epsilon(0.3);
+     loses(0), discount_factor(0.3), alpha(0.3),
+     epsilon(0.3)
 {
 }
 
@@ -599,6 +598,10 @@ void GazeboRsvBalance::UpdateChild()
 
 	//increment timestep
 	controller.time_step++;
+
+
+
+
 
 	// Check whether robot has fallen. Increase episode num is it has.
 	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)

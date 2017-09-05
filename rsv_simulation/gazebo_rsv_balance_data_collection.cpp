@@ -21,14 +21,10 @@
 #define PID_DELTA 0.05
 #define FREQ 20
 
-#define ACTION int(10)
 
 int episode_num = 0;
 int time_step = 0;
-float integral_sum = 0;
-float error_prev = 0;
-float kp = 0, ki = 0, kd = 0;
-
+int action = 10;
 
 namespace gazebo
 {
@@ -414,95 +410,57 @@ void GazeboRsvBalance::UpdateChild()
     this->publishOdometry();
     this->publishWheelJointState();
 
-/*
-    double x_desired[4];
-    x_desired[balance_control::theta] = tilt_desired_;
-    x_desired[balance_control::dx] = x_desired_;
-    x_desired[balance_control::dphi] = rot_desired_;
-    x_desired[balance_control::dtheta] = 0;
-
-    double y_fbk[4];
-    y_fbk[balance_control::theta] = this->imu_pitch_;
-    y_fbk[balance_control::dx] = this->feedback_v_;
-    y_fbk[balance_control::dphi] = this->feedback_w_;
-    y_fbk[balance_control::dtheta] = this->imu_dpitch_;
-
-    this->state_control_.stepControl(seconds_since_last_update, x_desired, y_fbk);
-
-    this->last_update_time_ += common::Time(this->update_period_);
-  */
- 
-
+	float pitch;
 	//variables for switch
- 	float actual;
-	float error;
-	float error_kp;
-	float error_ki;
-	float error_kd;
-	float derivative;
-	float pid_cmd;
-	float pitch;	
-  switch (this->current_mode_)
+   switch (this->current_mode_)
   {
     case BALANCE:
-	ROS_INFO("Episode num: %d", episode_num);
-	ROS_INFO("Time step: %d", time_step);
-	
+
 	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
 	{
 		this->restart_delta = parent_->GetWorld()->GetSimTime();
 		if (this->restart_delta - this->restart_delta_prev > 0.1)
 		{
 
-                ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+//                ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
                 episode_num++;
                 time_step = 0;
-                ROS_INFO("EPISODE NUM: %d", episode_num);
+                ROS_INFO("Ep:%d", episode_num);
+		if (episode_num % 5 == 0)
+			{
+//				action = action+5;
+				ROS_INFO("A:%d", action);
+			}
                 }
                 this->restart_delta_prev = this->restart_delta;
-	} 
-
-		//CHECK PITCH
-		pitch = this->imu_pitch_*(180/M_PI);
-		ROS_INFO("pitch: %f", pitch);			
-		
-		//APPLY ACTION
-		if (episode_num < 5)
-		{
-		this->joints_[LEFT]->SetVelocity(0,-ACTION);
-		this->joints_[RIGHT]->SetVelocity(0,ACTION);
-		}else if (episode_num >= 5 && episode_num < 10){
-		this->joints_[LEFT]->SetVelocity(0,-15);
-		this->joints_[RIGHT]->SetVelocity(0,15);}
-		else if (episode_num >= 10 && episode_num < 15){
-		this->joints_[LEFT]->SetVelocity(0,-15);
-		this->joints_[RIGHT]->SetVelocity(0,15);}
-		else if (episode_num >= 15 && episode_num < 20){
-		this->joints_[LEFT]->SetVelocity(0,-20);
-		this->joints_[RIGHT]->SetVelocity(0,20);}
-		else if (episode_num >= 20 && episode_num < 25){
-		this->joints_[LEFT]->SetVelocity(0,-25);
-		this->joints_[RIGHT]->SetVelocity(0,25);}
-		else if (episode_num >= 25 && episode_num < 30){
-		this->joints_[LEFT]->SetVelocity(0,-30);
-		this->joints_[RIGHT]->SetVelocity(0,30);}
-		
+	}
 
 	
-		//WAIT X AMOUNT OF TIME
-//		this->cur_time = parent_->GetWorld()->GetSimTime();
-/*		while(cur_time != cur_time + PID_DELTA)
-		{
-			this->cur_time = parent_->GetWorld()->GetSimTime();
-		}
-*/		//CHECK PITCH
+  pitch = this->imu_pitch_*(180/M_PI);
+  if(std::abs(pitch) > 0 && std::abs(pitch) < 35)
+  {
 
-		time_step++;	
+//	ROS_INFO("Episode num: %d", episode_num);
+	if (time_step % 10 == 0)
+	{
+	ROS_INFO("Ts:%d", time_step);		
+	ROS_INFO("Pa:%f", pitch);			
 
+	}
+
+	if (episode_num == 0 && time_step == 0)
+	{
+		ROS_INFO("A:%d", action);
+	}
 	
-//	original code is below 2 lines:
-//      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
-//      this->joints_[RIGHT]->SetForce(0, this->u_control_[balance_control::tauR]);
+
+	//APPLY ACTION
+	this->joints_[LEFT]->SetVelocity(0,-action);
+	this->joints_[RIGHT]->SetVelocity(0, action);
+	
+	time_step++;	
+  }//end of if between 0 and 35
+	
       break;
     case TRACTOR:
       this->joints_[LEFT]->SetVelocity(0, -( (2.0*this->x_desired_ - this->rot_desired_*this->wheel_separation_)
