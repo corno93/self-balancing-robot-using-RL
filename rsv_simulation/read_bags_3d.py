@@ -3,7 +3,7 @@ import rosbag
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import pyplot
 import numpy as np
-
+import plot_curve
 
 
 time_step = []
@@ -59,9 +59,12 @@ ax.set_xlabel("Time steps")
 ax.set_ylabel("actions")
 ax.set_zlabel("pitch angle")
 
-
 pyplot.show()
 
+plot_curve.plot_curve(time_step_int, actions_filled_int, pitch_float)
+
+
+'''
 fig = pyplot.figure()
 ax = Axes3D(fig)
 ax.plot_surface(actions_filled_int, pitch_float,time_step_int, color='b')
@@ -72,4 +75,4 @@ ax = Axes3D(fig)
 ax.plot_wireframe(time_step_int, actions_filled_int, pitch_float,rstride=10, cstride=10)# color='b')
 pyplot.show()
 
-
+'''
