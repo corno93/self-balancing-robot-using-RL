@@ -23,15 +23,15 @@
 //#include "gazebo_rsv_balance/pid.h"
 
 
-#define PID_DELTA 0.05
-#define FREQ 20
+#define PID_DELTA 0.01
+#define FREQ 100
 
 int reference_pitch = 0;
 int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 2, ki = 0.0, kd = 0.0;
+float kp = 5, ki = 1, kd = 0.2;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -488,7 +488,7 @@ void GazeboRsvBalance::UpdateChild()
         }
 
 	//apply control if segway is still in pitch range
-        if (std::abs(pitch) < 35 && std::abs(pitch) > 0)
+        if (std::abs(pitch) <= 35 && std::abs(pitch) >= 0)
         {
 
             ROS_INFO("EPISODE NUM: %d", episode_num);
@@ -496,13 +496,13 @@ void GazeboRsvBalance::UpdateChild()
             //reset integral term when balanced
             if (std::abs(pitch) < 1)
             {
-                integral_sum = 0;
+            //    integral_sum = 0;
                 ROS_INFO("reset integral");
             }
 
                 msg.time_steps = time_step;
 
-                error = pitch - reference_pitch;
+                error = pitch - 0;//reference_pitch;
                 msg.error = error;
                 ROS_INFO("pitch: %f", pitch);
 
@@ -533,8 +533,8 @@ void GazeboRsvBalance::UpdateChild()
                 ROS_INFO("pid_cmd: %f", pid_cmd);
 
                 msg.cmd = pid_cmd;
-                this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
-                this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
+                this->joints_[LEFT]->SetForce(0,-pid_cmd);
+                this->joints_[RIGHT]->SetForce(0, pid_cmd);
 	
                 this->state_publisher_.publish(msg);
 
