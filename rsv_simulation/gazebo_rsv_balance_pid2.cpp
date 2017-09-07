@@ -31,7 +31,7 @@ int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 1, ki = 0.0, kd = 0.0;
+float kp = 2, ki = 0.0, kd = 0.0;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -129,8 +129,6 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   this->joint_state_publisher_ = this->gazebo_ros_->node()->advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO("%s: Advertise joint_states!", gazebo_ros_->info());
 
-  //episode count publisher
-  this->episode_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Int64>("episodes", 10);
   //time step publisher
   this->time_step_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Int64>("time_step", 10);
   // pitch publisher
@@ -470,72 +468,78 @@ void GazeboRsvBalance::UpdateChild()
   {
     case BALANCE:
 
-	pitch = this->imu_pitch_*(180/M_PI);
-	if (std::abs(pitch) > 35)
-	{
-		this->restart_delta = parent_->GetWorld()->GetSimTime();
-		if (this->restart_delta - this->restart_delta_prev > 0.1)
-		{
+        pitch = this->imu_pitch_*(180/M_PI);
 
-		ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
-		integral_sum = 0;
-		error_prev = 0;
-		episode_num++;
-		time_step = 0;
-		msg.episodes = episode_num;
-	}
-		this->restart_delta_prev = this->restart_delta;
-	}
-	ROS_INFO("EPISODE NUM: %d", episode_num);
-		
-	//reset integral term when balanced
-	if (std::abs(pitch) < 1)
-	{	
-		integral_sum = 0;
-		ROS_INFO("reset integral");
-	} 
+	// check if episode is over
+        if (std::abs(pitch) > 35)
+        {
+            this->restart_delta = parent_->GetWorld()->GetSimTime();
+            if (this->restart_delta - this->restart_delta_prev > 0.1)
+            {
 
-		msg.time_steps = time_step;
-		
-		error = pitch - reference_pitch;
-		msg.error = error;
-		ROS_INFO("pitch: %f", pitch);
+            ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+            integral_sum = 0;
+            error_prev = 0;
+            episode_num++;
+            time_step = 0;
+            msg.episodes = episode_num;
+            }
+            this->restart_delta_prev = this->restart_delta;
+        }
 
-		error_kp = error * kp;
-		prop_error_.data = error_kp;
-		msg.error_proportional = error_kp;
+	//apply control if segway is still in pitch range
+        if (std::abs(pitch) < 35 && std::abs(pitch) > 0)
+        {
+
+            ROS_INFO("EPISODE NUM: %d", episode_num);
+
+            //reset integral term when balanced
+            if (std::abs(pitch) < 1)
+            {
+                integral_sum = 0;
+                ROS_INFO("reset integral");
+            }
+
+                msg.time_steps = time_step;
+
+                error = pitch - reference_pitch;
+                msg.error = error;
+                ROS_INFO("pitch: %f", pitch);
+
+                error_kp = error * kp;
+                prop_error_.data = error_kp;
+                msg.error_proportional = error_kp;
+
+                integral_sum += error * seconds_since_last_update;
+                error_ki = integral_sum * ki;
+                msg.integral_sum = integral_sum;
+                msg.error_integral = error_ki;
+
+                derivative = (error - error_prev)/seconds_since_last_update;
+                error_kd = derivative * kd;
+                msg.derivative = derivative;
+                msg.error_derivative = error_kd;
+                error_prev = error;
+
+                pid_cmd = (error_kp + error_ki + error_kd);
+
+                if (pid_cmd > 60)
+                {
+                    pid_cmd = 60;
+                }else if (pid_cmd < -60)
+                {
+                    pid_cmd = -60;
+                }
+                ROS_INFO("pid_cmd: %f", pid_cmd);
+
+                msg.cmd = pid_cmd;
+                this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
+                this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
 	
-		integral_sum += error * seconds_since_last_update;
-		error_ki = integral_sum * ki;
-		msg.integral_sum = integral_sum;
-		msg.error_integral = error_ki;
+                this->state_publisher_.publish(msg);
 
-		derivative = (error - error_prev)/seconds_since_last_update;
-		error_kd = derivative * kd;
-		msg.derivative = derivative;
-		msg.error_derivative = error_kd;
-		error_prev = error;
-		
-		pid_cmd = (error_kp + error_ki + error_kd);
-	
-		if (pid_cmd > 60)
-		{
-			pid_cmd = 60;
-		}else if (pid_cmd < -60)
-		{
-			pid_cmd = -60;
-		}
-		ROS_INFO("pid_cmd: %f", pid_cmd);
-	
-		msg.cmd = pid_cmd;
-
-		this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
-		this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
-
-		this->state_publisher_.publish(msg);
-
-		time_step++;
-	
+                time_step++;
+    }
       break;
     case TRACTOR:
       this->joints_[LEFT]->SetVelocity(0, -( (2.0*this->x_desired_ - this->rot_desired_*this->wheel_separation_)
