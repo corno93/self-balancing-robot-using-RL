@@ -31,7 +31,7 @@ int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 5, ki = 0.5, kd = 0.2;
+float kp = 1, ki = 0.0, kd = 0.0;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -149,8 +149,7 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   this->derivative_error_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("deriv_error", 10);
 
 
-
-
+//  this->pid_publisher_ = this->gazebo_ros_->node()->advertise<rsv_balance_msgs::PidData("pid_data", 10);
 
 
 
@@ -465,6 +464,7 @@ void GazeboRsvBalance::UpdateChild()
 	std_msgs::Float32 deriv_;
 	std_msgs::Float32 deriv_error_;
 	
+	rsv_balance_msgs::State msg;
 	
   switch (this->current_mode_)
   {
@@ -482,13 +482,12 @@ void GazeboRsvBalance::UpdateChild()
 		error_prev = 0;
 		episode_num++;
 		time_step = 0;
-		episode_cnt_.data = episode_num;
-		this->episode_publisher_.publish(episode_cnt_);
-		ROS_INFO("EPISODE NUM: %d", episode_num);
-		}
+		msg.episodes = episode_num;
+	}
 		this->restart_delta_prev = this->restart_delta;
 	}
-	
+	ROS_INFO("EPISODE NUM: %d", episode_num);
+		
 	//reset integral term when balanced
 	if (std::abs(pitch) < 1)
 	{	
@@ -496,31 +495,25 @@ void GazeboRsvBalance::UpdateChild()
 		ROS_INFO("reset integral");
 	} 
 
-		time_step_cnt_.data = time_step;
-		this->time_step_publisher_.publish(time_step_cnt_);
+		msg.time_steps = time_step;
 		
 		error = pitch - reference_pitch;
+		msg.error = error;
 		ROS_INFO("pitch: %f", pitch);
-		pitch_.data = pitch;
-		this->pitch_publisher_.publish(pitch_);
 
 		error_kp = error * kp;
 		prop_error_.data = error_kp;
-		this->proportional_publisher_.publish(prop_error_);
-		
+		msg.error_proportional = error_kp;
+	
 		integral_sum += error * seconds_since_last_update;
 		error_ki = integral_sum * ki;
-		int_sum_.data = integral_sum;
-		int_error_.data = error_ki;
-		this->int_sum_publisher_.publish(int_sum_);
-		this->int_error_publisher_.publish(int_error_);
+		msg.integral_sum = integral_sum;
+		msg.error_integral = error_ki;
 
 		derivative = (error - error_prev)/seconds_since_last_update;
 		error_kd = derivative * kd;
-		deriv_.data = derivative;
-		deriv_error_.data = error_kd;
-		this->derivative_publisher_.publish(deriv_);
-		this->derivative_error_publisher_.publish(deriv_error_);
+		msg.derivative = derivative;
+		msg.error_derivative = error_kd;
 		error_prev = error;
 		
 		pid_cmd = (error_kp + error_ki + error_kd);
@@ -534,11 +527,12 @@ void GazeboRsvBalance::UpdateChild()
 		}
 		ROS_INFO("pid_cmd: %f", pid_cmd);
 	
-		cmd_.data = pid_cmd;
-		this->cmd_publisher_.publish(cmd_);
+		msg.cmd = pid_cmd;
 
 		this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
 		this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
+
+		this->state_publisher_.publish(msg);
 
 		time_step++;
 	
