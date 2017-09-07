@@ -22,17 +22,19 @@
 #include <cmath>
 #include <algorithm>
 
-#define RL_DELTA 0.05
+#define RL_DELTA 0.1
 #define FREQ 20
 #define STATES 8
 #define ACTIONS 8
+#define WHEEL_RADIUS 0.19
+
 
 class reinforcement_learning
 {
   public:
     float alpha;
     int episode_num;
-    int time_step;
+    int time_steps;
     int wins;
     int loses;
     float discount_factor;
@@ -48,13 +50,13 @@ class reinforcement_learning
     char virtual choose_action(char) = 0;
     void TD_update(char, char, char, int);
     char get_state(float);
-    char get_next_state(char, char);
+    float get_next_state(float, char);
     int get_reward(char);
 };
 
 reinforcement_learning::reinforcement_learning()
   :  Q(STATES, std::vector<float>(ACTIONS,0)), 
-     episode_num(0), time_step(0), wins(0),
+     episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.3),
      epsilon(0.3)
 {
@@ -120,9 +122,14 @@ char reinforcement_learning::get_state(float pitch)
 }
 
 
-char reinforcement_learning::get_next_state(char cur_state, char action)
+float reinforcement_learning::get_next_state(float curr_pitch, char action_idx)
 {
-
+  float next_pitch = -(WHEEL_RADIUS * ((2*M_PI*actions[action_idx]) / 60) * RL_DELTA) + curr_pitch;
+  ROS_INFO("next pitch is: %f", next_pitch);
+  return next_pitch;
+  //float next_state = this->get_state(next_pitch);
+  //return next_state;
+  
 
 }
 
@@ -583,7 +590,34 @@ void GazeboRsvBalance::UpdateChild()
   char curr_state;
   char next_state;
   int reward;
-// Only execute control loop on specified rate
+  float next_pitch;
+  rsv_balance_msgs::State msg;
+
+    this->updateIMU();
+    this->updateOdometry();
+    this->publishOdometry();
+    this->publishWheelJointState();
+
+    pitch = this->imu_pitch_*(180/M_PI);
+      if (std::abs(pitch) > 35)
+      {
+
+	this->restart_delta = parent_->GetWorld()->GetSimTime();
+	if (this->restart_delta - this->restart_delta_prev > 0.1)
+	{
+
+	  ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+	  controller.episode_num++;
+          msg.episodes = controller.episode_num;
+	  controller.time_steps = 0;
+   	  ROS_INFO("EPISODE NUM: %d", controller.episode_num);
+	}
+	this->restart_delta_prev = this->restart_delta;
+	
+      }
+
+
+  // Only execute control loop on specified rate
   if (seconds_since_last_update > RL_DELTA)
   {
 
@@ -591,56 +625,39 @@ void GazeboRsvBalance::UpdateChild()
 
     this->last_update_time_ += common::Time(RL_DELTA);
 
-
-    this->updateIMU();
-    this->updateOdometry();
-    this->publishOdometry();
-    this->publishWheelJointState();
-
-  switch (this->current_mode_)
-  {
-    case BALANCE:
-
-	//increment timestep
-	controller.time_step++;
+   switch (this->current_mode_)
+    {
+     case BALANCE:
 
 
+       // apply control if segway is still in pitch range
+      if (std::abs(pitch) <=35 && std::abs(pitch) >=0)
+      {
 
-
-
-	// Check whether robot has fallen. Increase episode num is it has.
-	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
-	{
-		this->restart_delta = parent_->GetWorld()->GetSimTime();
-		if (this->restart_delta - this->restart_delta_prev > 0.1)
-		{
-
-		ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
-		controller.episode_num++;
-		controller.time_step = 0;
-		ROS_INFO("EPISODE NUM: %d", controller.episode_num);
-		}
-		this->restart_delta_prev = this->restart_delta;
-	} 
+	msg.time_steps = controller.time_steps;
+	msg.error = pitch - 0;
 
 	//get state value
-	pitch = this->imu_pitch_*(180/M_PI);
-//	ROS_INFO("pitch: %f", pitch);
+	ROS_INFO("pitch: %f", pitch);
+ 	msg.curr_pitch = pitch;
 	curr_state = controller.get_state(pitch);
 //	ROS_INFO("current state: %d", curr_state);
 
 	// select action
 	action_idx = controller.choose_action(curr_state);	
 //	ROS_INFO("action selected: %d", action_idx);	
-
+	action_idx = 0; 
+	msg.action = controller.actions[action_idx];
 
 	//take action
 	this->joints_[LEFT]->SetVelocity(0,-controller.actions[action_idx]);
 	this->joints_[RIGHT]->SetVelocity(0, controller.actions[action_idx]);
 
 	//get next state
-	next_state = 6;	
- 	
+	next_pitch = controller.get_next_state(pitch, action_idx);
+	next_state = controller.get_state(next_pitch);
+ 	msg.next_pitch = next_pitch;
+
 	//get reward
 	reward = controller.get_reward(next_state);
 
@@ -658,10 +675,14 @@ void GazeboRsvBalance::UpdateChild()
 	}
 	curr_state = next_state;	
 
+	// publish important data
+	this->state_publisher_.publish(msg);
+
+	//increment timestep
+	controller.time_steps++;
+
+      }	
 	
-	
-//      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
-//      this->joints_[RIGHT]->SetForce(0, this->u_control_[balance_control::tauR]);
       break;
     case TRACTOR:
       this->joints_[LEFT]->SetVelocity(0, -( (2.0*this->x_desired_ - this->rot_desired_*this->wheel_separation_)
