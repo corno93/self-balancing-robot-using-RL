@@ -587,6 +587,11 @@ void GazeboRsvBalance::UpdateChild()
   if (seconds_since_last_update > RL_DELTA)
   {
 
+    ROS_INFO("seconds since last update %f", seconds_since_last_update);
+
+    this->last_update_time_ += common::Time(RL_DELTA);
+
+
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
@@ -620,13 +625,13 @@ void GazeboRsvBalance::UpdateChild()
 
 	//get state value
 	pitch = this->imu_pitch_*(180/M_PI);
-	ROS_INFO("pitch: %f", pitch);
+//	ROS_INFO("pitch: %f", pitch);
 	curr_state = controller.get_state(pitch);
-	ROS_INFO("current state: %d", curr_state);
+//	ROS_INFO("current state: %d", curr_state);
 
 	// select action
 	action_idx = controller.choose_action(curr_state);	
-	ROS_INFO("action selected: %d", action_idx);	
+//	ROS_INFO("action selected: %d", action_idx);	
 
 
 	//take action

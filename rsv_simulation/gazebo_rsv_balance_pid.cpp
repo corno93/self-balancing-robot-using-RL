@@ -14,6 +14,10 @@
 #include <string>
 #include <map>
 
+#include "std_msgs/String.h"
+#include "std_msgs/Float32.h"
+#include "std_msgs/Int64.h"
+
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
 //#include "gazebo_rsv_balance/pid.h"
@@ -26,7 +30,7 @@ int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 2, ki = 0, kd = 0.1;
+float kp = 2, ki = 0.1, kd = 0.1;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -123,6 +127,31 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Joint state publisher
   this->joint_state_publisher_ = this->gazebo_ros_->node()->advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO("%s: Advertise joint_states!", gazebo_ros_->info());
+
+  //episode count publisher
+  this->episode_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Int64>("episodes", 10);
+  //time step publisher
+  this->time_step_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Int64>("time_step", 10);
+  // pitch publisher
+  this->pitch_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("pitch", 10);
+  // cmd publisher
+  this->cmd_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("cmd", 10);
+  // proportional error  publisher
+  this->proportional_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("prop_error", 10);
+  //integral sum publisher
+  this->int_sum_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("int_sum", 10);
+  //integral error publisher
+  this->int_error_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("int_error", 10);
+  //derivative publisher
+  this->derivative_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("deriv", 10);
+ // derivative error publisher
+  this->derivative_error_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("deriv_error", 10);
+
+
+
+
+
+
 
   // Service for changing operating mode
   ros::AdvertiseServiceOptions ao = ros::AdvertiseServiceOptions::create<rsv_balance_msgs::SetMode>("set_mode",
@@ -408,50 +437,37 @@ void GazeboRsvBalance::UpdateChild()
   if (seconds_since_last_update > PID_DELTA)
   {
 
-//	ROS_INFO("seconds since last update: %f", seconds_since_last_update);
+    ROS_INFO("seconds since last update: %f", seconds_since_last_update);
+    this->last_update_time_ += common::Time(PID_DELTA);
 
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
     this->publishWheelJointState();
 
-/*
-    double x_desired[4];
-    x_desired[balance_control::theta] = tilt_desired_;
-    x_desired[balance_control::dx] = x_desired_;
-    x_desired[balance_control::dphi] = rot_desired_;
-    x_desired[balance_control::dtheta] = 0;
-
-    double y_fbk[4];
-    y_fbk[balance_control::theta] = this->imu_pitch_;
-    y_fbk[balance_control::dx] = this->feedback_v_;
-    y_fbk[balance_control::dphi] = this->feedback_w_;
-    y_fbk[balance_control::dtheta] = this->imu_dpitch_;
-
-    this->state_control_.stepControl(seconds_since_last_update, x_desired, y_fbk);
-
-    this->last_update_time_ += common::Time(this->update_period_);
-  */
- 
-
 	//variables for switch
- 	float actual;
 	float error;
 	float error_kp;
 	float error_ki;
 	float error_kd;
 	float derivative;
 	float pid_cmd;
+	float pitch;
+	//published variables
+	std_msgs::Int64 episode_cnt_;
+	std_msgs::Int64 time_step_cnt_;
+	std_msgs::Float32 pitch_;
+	std_msgs::Float32 cmd_;
+	std_msgs::Float32 prop_error_;
+	std_msgs::Float32 int_sum_;
+	std_msgs::Float32 int_error_;
+	std_msgs::Float32 deriv_;
+	std_msgs::Float32 deriv_error_;
+	
 	
   switch (this->current_mode_)
   {
     case BALANCE:
-
-	//Run RL alg every 2Hz.
-
-	//this->current_time_RL = this->parent_->GetWorld()->GetSimTime();
- 	//double seconds_since_last_RL_update;
-	//seconds_since_last_RL_update = (current_time_RL - this->rl_update_time).Double();
 
 	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
 	{
@@ -463,30 +479,45 @@ void GazeboRsvBalance::UpdateChild()
 		integral_sum = 0;
 		error_prev = 0;
 		episode_num++;
+		time_step = 0;
+		episode_cnt_.data = episode_num;
+		this->episode_publisher_.publish(episode_cnt_);
 		ROS_INFO("EPISODE NUM: %d", episode_num);
 		}
 		this->restart_delta_prev = this->restart_delta;
 	} 
 
+		time_step_cnt_.data = time_step;
+		this->time_step_publisher_.publish(time_step_cnt_);
 		
-		actual = this->imu_pitch_*(180/M_PI);
-		error = actual - 0;
-		ROS_INFO("pitch: %f", actual);
+		pitch = this->imu_pitch_*(180/M_PI);
+		error = pitch - 0;
+		ROS_INFO("pitch: %f", pitch);
+		pitch_.data = pitch;
+		this->pitch_publisher_.publish(pitch_);
 
 		error_kp = error * kp;
+		prop_error_.data = error_kp;
+		this->proportional_publisher_.publish(prop_error_);
 		
 		integral_sum += error * seconds_since_last_update;
 		error_ki = integral_sum * ki;
+		int_sum_.data = integral_sum;
+		int_error_.data = error_ki;
+		this->int_sum_publisher_.publish(int_sum_);
+		this->int_error_publisher_.publish(int_error_);
 
 		derivative = (error - error_prev)/seconds_since_last_update;
 		error_kd = derivative * kd;
+		deriv_.data = derivative;
+		deriv_error_.data = error_kd;
+		this->derivative_publisher_.publish(deriv_);
+		this->derivative_error_publisher_.publish(deriv_error_);
 		error_prev = error;
-
-	//	ROS_INFO("error_kp: %f, error_ki: %f, error_kd: %f", error_kp, error_ki, error_kd);	
-
+		
 		pid_cmd = (error_kp + error_ki + error_kd);
-		ROS_INFO("pid_cmd: %f", pid_cmd);
-	//	ROS_INFO("p: %f. i: %f. d: %f", kp, ki, kd);	
+	//	ROS_INFO("pid_cmd: %f", pid_cmd);
+		
 		if (pid_cmd > 60)
 		{
 			pid_cmd = 60;
@@ -494,19 +525,15 @@ void GazeboRsvBalance::UpdateChild()
 		{
 			pid_cmd = -60;
 		}
-		
-		this->joints_[LEFT]->SetForce(0,-pid_cmd);
-		this->joints_[RIGHT]->SetForce(0, pid_cmd);
 
-	
-	//	time_step++;
- 	 //this->last_update_time_ += common::Time(PID_DELTA);
- 	
+		cmd_.data = pid_cmd;
+		this->cmd_publisher_.publish(cmd_);
 
+		this->joints_[LEFT]->SetVelocity(0,-pid_cmd);
+		this->joints_[RIGHT]->SetVelocity(0, pid_cmd);
+
+		time_step++;
 	
-//	original code is below 2 lines:
-//      this->joints_[LEFT]->SetForce(0, -this->u_control_[balance_control::tauL]);
-//      this->joints_[RIGHT]->SetForce(0, this->u_control_[balance_control::tauR]);
       break;
     case TRACTOR:
       this->joints_[LEFT]->SetVelocity(0, -( (2.0*this->x_desired_ - this->rot_desired_*this->wheel_separation_)
