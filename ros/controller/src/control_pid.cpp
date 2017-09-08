@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <iostream>
 
+#include "controller/PidData.h"
 
 #define FREQUENCY 100
 #define PID_DELTA 0.01
@@ -51,6 +52,10 @@ class Controller
 		double roll;
 		double pitch;
 		double yaw;
+
+		//Other
+		int episodes;
+		int time_steps;
 };
 
 
@@ -59,6 +64,8 @@ Controller::Controller()
 	:	roll(0.0)
 	    ,	pitch(0.0)
 	    ,	yaw(0.0)
+	    ,   episodes(0)
+	    ,   time_steps(0)
 {
 	//Ros Init (subscribe to IMU topic)
 	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
@@ -130,7 +137,7 @@ void Controller::write_serial_command(std::string const& command)
 
 void Controller::pitch_tolerance()
 {
-	if (pitch > -1.5 && pitch < 1.5)
+	if (pitch > -3.0 && pitch < 3.0)
 	{
 		pitch = 0.0;
 	}
@@ -145,6 +152,9 @@ class PID : public Controller
 	float pitch_ref;
 	float error_prev;
 	float integral_sum;
+
+	controller::PidData msg;
+
 	PID(float, float, float);
 	~PID();
 	float updatePID();
@@ -178,14 +188,20 @@ float PID::updatePID()
 	float error, error_kp, error_ki, error_kd, derivative;
 	
 	error = pitch - pitch_ref;//pitch_ref - pitch;
+	msg.error = error;
 
 	error_kp = error * kp;
+	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
 	error_ki = integral_sum * ki;
+	msg.integral_sum = integral_sum;
+	msg.error_integral = error_ki;
 
 	derivative = (error - error_prev)/PID_DELTA;
 	error_kd = derivative * kd;
+	msg.derivative = derivative;
+	msg.error_derivative = error_kd;
 	error_prev = error;
 	
 	return (error_kp + error_ki + error_kd);
@@ -211,6 +227,8 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 	ros::Rate loop_rate(FREQUENCY); 
 
+	ros::Publisher pid_data = n.advertise<controller::PidData>("/pid_data", 1000);
+
 	PID pid(6.5,0.0,0.15);
 
 	std::string command;
@@ -219,6 +237,9 @@ int main(int argc, char **argv)
 	while (ros::ok())
 	{
 		ros::spinOnce(); //update pitch
+
+		pid.time_steps++;
+		pid.msg.time_steps = pid.time_steps;
 
 		ROS_INFO("%f", pid.pitch);
 		pid.pitch_tolerance();
@@ -233,6 +254,7 @@ int main(int argc, char **argv)
 
 		pid.write_serial_command(command);
 
+		pid_data.publish(pid.msg);
 
 		loop_rate.sleep();
 	}
