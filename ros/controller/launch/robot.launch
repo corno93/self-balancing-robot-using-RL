@@ -6,6 +6,8 @@
 	<node name="i2c_imu_node" pkg="i2c_imu" type="i2c_imu_node" ns="imu" output="screen">
 	</node>
 
+	<node name="arduino_feedback_node" pkg="arduino_feedback" type="arduino_feedback_node.py" output="screen"/>
+
 	<node name="control_pid" pkg="controller" type="control" />
 
 	<node pkg="rosbag" type="record" name="rosbag_record" args="-a -O /home/alex/bagfiles/data.bag" />
