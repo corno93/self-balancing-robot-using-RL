@@ -11,7 +11,11 @@
 
 #define M1pin 12
 #define M2pin 11
+<<<<<<< HEAD
 #define STOP 126  //was 128 at some point...
+=======
+#define STOP 128
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
 
 
 //DT VARIBALES
@@ -55,7 +59,11 @@ void setup() {
     timer3_interrupt_setup(); //encoders read and RPM calcs
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
 
+<<<<<<< HEAD
  // PWM SETTINGS (set timer 1 to 8 prescale to get a PWM with freq )
+=======
+ // PWM SETTINGS (set timer 1 to 8 prescale)
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   TCCR1B = TCCR1B & B11111000 | B00000001; 
 
   pinMode(M1pin, OUTPUT);
@@ -66,7 +74,15 @@ void setup() {
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
     interrupts();
+<<<<<<< HEAD
 
+=======
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+    new_data = true;
+    analogWrite(M1pin, STOP);  
+    analogWrite(M2pin, STOP);
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
 
 
 }

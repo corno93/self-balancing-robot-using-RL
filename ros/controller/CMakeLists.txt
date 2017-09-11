@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   genmsg
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -51,8 +52,11 @@ message(${wiringPi})
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
+ add_message_files(
+   FILES
+   PidData.msg
+)
+
 #   Message1.msg
 #   Message2.msg
 # )
@@ -109,7 +113,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES controller
-  CATKIN_DEPENDS roscpp rospy std_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -154,7 +158,7 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(control src/control.cpp)
+add_executable(control src/control_pid.cpp)
 add_dependencies(control motors_generate_messages_cpp wiringPi)
 
 # DIRECTORY METHOD:
@@ -162,6 +166,8 @@ add_dependencies(control motors_generate_messages_cpp wiringPi)
 
 # COMPLIED LIBRARY METHOD:
 target_link_libraries(control ${catkin_LIBRARIES} wiringPi)
+
+
 
 #############
 ## Install ##

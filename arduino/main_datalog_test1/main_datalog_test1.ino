@@ -119,7 +119,7 @@ void loop() {
         PID_flag = false;
 
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
-        analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, -RPM_ref_m2));
+        analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
 
         // time elapsed debug
     //    end_ = micros() - start;

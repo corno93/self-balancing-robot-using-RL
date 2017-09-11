@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+
+
+
+	<node name="i2c_imu_node" pkg="i2c_imu" type="i2c_imu_node" ns="imu" output="screen">
+	</node>
+
+	<node name="control_pid" pkg="controller" type="control" />
+
+	<node pkg="rosbag" type="record" name="rosbag_record" args="-a -O /home/alex/bagfiles/data.bag" />
+
+
+</launch>

@@ -269,8 +269,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     data_cntr++;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
+<<<<<<< HEAD
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
+=======
+    RPM_ref_m1 = 60;
+    RPM_ref_m2 = 60;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if (ISR4_cntr == CMD_FREQ*2)
   {
     *(data_ptr_M1+data_cntr) = 9992;
@@ -278,8 +283,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = -1;
     RPM_ref_m2 = -1;
+=======
+    RPM_ref_m1 = -30;
+    RPM_ref_m2 = -30;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if (ISR4_cntr == CMD_FREQ*3)
   {
     *(data_ptr_M1+data_cntr) = 9993;
@@ -287,8 +297,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = 5;  //100 rpm doesnt want to work...
     RPM_ref_m2 = 5;
+=======
+    RPM_ref_m1 = 30;  //100 rpm doesnt want to work...
+    RPM_ref_m2 = 30;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if (ISR4_cntr == CMD_FREQ*4)
   {
     *(data_ptr_M1+data_cntr) = 9994;
@@ -298,8 +313,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     data_cntr++;
   //  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
 
+<<<<<<< HEAD
     RPM_ref_m1 = -10;
     RPM_ref_m2 = -10;
+=======
+    RPM_ref_m1 = -60;
+    RPM_ref_m2 = -60;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if(ISR4_cntr == CMD_FREQ*5)
   {
     *(data_ptr_M1+data_cntr) = 9995;
@@ -307,8 +327,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = -2;
     RPM_ref_m2 = -2;
+=======
+    RPM_ref_m1 = 30;
+    RPM_ref_m2 = 30;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if(ISR4_cntr == CMD_FREQ*6)
   {
     *(data_ptr_M1+data_cntr) = 9996;
@@ -316,8 +341,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = 5;
     RPM_ref_m2 = 5;
+=======
+    RPM_ref_m1 = 90;
+    RPM_ref_m2 = 90;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if(ISR4_cntr == CMD_FREQ*7)
   {
     *(data_ptr_M1+data_cntr) = 9997;
@@ -325,8 +355,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = 10;
     RPM_ref_m2 = 10;
+=======
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if(ISR4_cntr == CMD_FREQ*8)
   {
     *(data_ptr_M1+data_cntr) = 9998;
@@ -334,8 +369,13 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
+<<<<<<< HEAD
     RPM_ref_m1 = 15;
     RPM_ref_m2 = 15;
+=======
+    RPM_ref_m1 = -90;
+    RPM_ref_m2 = -90;
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
     }else if(ISR4_cntr == CMD_FREQ*9)
   {
     *(data_ptr_M1+data_cntr) = 9910;
