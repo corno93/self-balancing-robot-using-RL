@@ -11,7 +11,11 @@
 
 #define M1pin 12
 #define M2pin 11
+<<<<<<< HEAD
+#define STOP 126  //was 128 at some point...
+=======
 #define STOP 128
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
 
 
 //DT VARIBALES
@@ -35,7 +39,7 @@ signed long encoder1count = 0;
 signed long encoder2count = 0;
 
 //PID VARIABLES:
-boolean PID_flag = true;
+boolean PID_flag = false;
 int RPM_ref_m1;
 int RPM_actual_m1;
 int RPM_ref_m2;
@@ -43,9 +47,6 @@ int RPM_actual_m2;
 int PID_count;
 
 //COMS VARIBALES:
-boolean new_data = false;
-String inputString = "";         // a String to hold incoming data
-boolean stringComplete = false;  // whether the string is complete
 int counter = 0;
 int databuff[IN_BUFF_SIZE];
 
@@ -58,18 +59,30 @@ void setup() {
     timer3_interrupt_setup(); //encoders read and RPM calcs
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
 
+<<<<<<< HEAD
+ // PWM SETTINGS (set timer 1 to 8 prescale to get a PWM with freq )
+=======
  // PWM SETTINGS (set timer 1 to 8 prescale)
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   TCCR1B = TCCR1B & B11111000 | B00000001; 
 
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+    analogWrite(M1pin, STOP);  
+    analogWrite(M2pin, STOP);
     interrupts();
+<<<<<<< HEAD
+
+=======
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
     new_data = true;
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
+>>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
 
 
 }
@@ -147,7 +160,7 @@ void serialEvent()
   {
     digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
     // get the new byte:
-    databuff[counter] = (int)Serial.read();;
+    databuff[counter] = (int)Serial.read();
     counter++;
     if (counter == IN_BUFF_SIZE)
     {
@@ -164,8 +177,8 @@ void serialEvent()
       RPM_ref_m2 = m2_hund*100 + m2_tens*10 + m2_ones;
       
       // re-initalise PID for new reference command
-      wheelCtrl1.pid.init();
-      wheelCtrl2.pid.init();
+      //wheelCtrl1.pid.init();
+      //wheelCtrl2.pid.init();
       if (m1_sign == '-')
       {
         RPM_ref_m1 = -RPM_ref_m1;
