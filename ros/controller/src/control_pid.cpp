@@ -14,7 +14,7 @@
 
 #define FREQUENCY 50
 #define PID_DELTA 0.02
-#define BAUD_RATE 38400
+#define BAUD_RATE 115200
 
 namespace patch
 {

@@ -5,10 +5,13 @@ from std_msgs.msg import String
 import serial
 from arduino_feedback.msg import feedback
 
+BAUD_RATE = 115200
+
+
 if __name__ == '__main__':
 
     try:
-        ardS = serial.Serial("/dev/ttyACM0", 38400)
+        ardS = serial.Serial("/dev/ttyACM0", BAUD_RATE)
     except:
         rospy.loginfo("Unable to connect to port ttyACM0")
    
@@ -29,7 +32,8 @@ if __name__ == '__main__':
                 msg.rpm1 = float(data_recieved[2:])
             elif data_recieved[:2] == 'R2':
                 msg.rpm2 = float(data_recieved[2:])
-           
+            else:
+                data_recieved = 0           
             rospy.loginfo(data_recieved)
             pub.publish(msg)
             rate.sleep()
