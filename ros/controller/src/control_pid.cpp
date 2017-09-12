@@ -12,9 +12,9 @@
 
 #include "controller/PidData.h"
 
-#define FREQUENCY 100
-#define PID_DELTA 0.01
-
+#define FREQUENCY 50
+#define PID_DELTA 0.02
+#define BAUD_RATE 38400
 
 namespace patch
 {
@@ -68,10 +68,10 @@ Controller::Controller()
 	    ,   time_steps(0)
 {
 	//Ros Init (subscribe to IMU topic)
-	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
+	sub = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
 	
 	//Serial Init
-	if ((fd = serialOpen("/dev/ttyACM0",9600))<0)
+	if ((fd = serialOpen("/dev/ttyACM0",BAUD_RATE))<0)
 	{
 		ROS_INFO("Unable to open serial device");
 	}	
