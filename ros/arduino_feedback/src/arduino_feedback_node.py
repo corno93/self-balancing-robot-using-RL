@@ -11,7 +11,7 @@ BAUD_RATE = 115200
 if __name__ == '__main__':
 
     try:
-        ardS = serial.Serial("/dev/ttyACM0", BAUD_RATE)
+        ardS = serial.Serial("/dev/ttyS0", BAUD_RATE)
     except:
         rospy.loginfo("Unable to connect to port ttyACM0")
    
@@ -23,12 +23,17 @@ if __name__ == '__main__':
     msg = feedback()
 	
     while not rospy.is_shutdown():
-
+	print "yo"
 	try:
 	  #  read_serial = str(int(ardS.readline(), 16))
             data_recieved = ardS.readline()
 #            msg.rpm1 = read_serial
-            if data_recieved[:2] == 'R1':
+        except:
+	    rospy.loginfo("Unable to readline from arduino")
+	    data_recieved = 0
+
+	if data_recieved:
+	    if data_recieved[:2] == 'R1':
                 msg.rpm1 = float(data_recieved[2:])
             elif data_recieved[:2] == 'R2':
                 msg.rpm2 = float(data_recieved[2:])
@@ -37,10 +42,6 @@ if __name__ == '__main__':
             rospy.loginfo(data_recieved)
             pub.publish(msg)
             rate.sleep()
-	except:
-	    rospy.loginfo("Unable to readline from arduino")
-
-
 
  
 

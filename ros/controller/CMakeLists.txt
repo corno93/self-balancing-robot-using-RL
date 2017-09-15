@@ -57,9 +57,6 @@ message(${wiringPi})
    PidData.msg
 )
 
-#   Message1.msg
-#   Message2.msg
-# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
