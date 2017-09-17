@@ -5,7 +5,7 @@
  *  Based on diff_drive_plugin
  *
  *  MODIFICATION: 
- *  - control segway about pitch angle using a RL q-learning controller
+ * Gets only the next state from applying an action
 
  *********************************************************************/
 
@@ -17,228 +17,17 @@
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
 
-#include <vector>
-#include <time.h>
-#include <cmath>
-#include <algorithm>
+#include "std_msgs/String.h"
 
-#define RL_DELTA 0.1
+#define PID_DELTA 0.05
 #define FREQ 20
-#define STATES 8
-#define ACTIONS 8
-#define WHEEL_RADIUS 0.19
-
-// 2D state space
-#define STATE_NUM 5
-char phi_states[STATE_NUM] = {-30, -20, 0, 20, 30};
-char phi_d_states[STATE_NUM] = {-20, -10, 0, 10, 20};
-
-class reinforcement_learning
-{
-  public:
-    float alpha;
-    int episode_num;
-    int time_steps;
-    int wins;
-    int loses;
-    float discount_factor;
-    float epsilon;
-    float pitch;
-    float pitch_dot;
-    float prev_pitch;
-
-    char actions[ACTIONS] = {30,20,10,5,-5,-10,-20,-30};
-    int rewards[STATES] = {0,50,100,1000,1000,100,50,0};
-    reinforcement_learning();
-    ~reinforcement_learning();
-
-    std::vector<std::vector<float> > Q;
-
-    char virtual choose_action(char) = 0;
-    void TD_update(char, char, char, int);
-    char get_state(float, float);
-    float get_next_state(float,float, char);
-    int get_reward(char);
-};
-
-reinforcement_learning::reinforcement_learning()
-  :  Q(STATES, std::vector<float>(ACTIONS,0)), 
-     episode_num(0), time_steps(0), wins(0),
-     loses(0), discount_factor(0.3), alpha(0.3),
-     epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0)
-{
-}
-
-reinforcement_learning::~reinforcement_learning()
-{
-}
-
-int reinforcement_learning::get_reward(char next_state)
-{
-  return rewards[next_state];
-}
-
-char reinforcement_learning::choose_action(char)
-{
-}
-
-void reinforcement_learning::TD_update(char curr_state, char action, char next_state, int reward)
-{
-  int max_action_idx;
-  float td_target;
-  float td_error;
-
-  //next_state_idx = get_state_index(next_state);
-  max_action_idx = distance(Q[next_state].begin(), max_element(Q[next_state].begin(), Q[next_state].end()));
-  td_target = reward + discount_factor*Q[next_state][max_action_idx];
-  td_error = td_target - Q[curr_state][action];
-  Q[curr_state][action]+= td_error*alpha;
-
-}
-
-char reinforcement_learning::get_state(float pitch, float pitch_dot)
-{
-  char i, j;
-  for (char phi_idx = 0; phi_idx < STATE_NUM; phi_idx++)
-  {
-    if (pitch <= phi_states[phi_idx+1])
-    {
-      i = phi_idx;
-      break;
-    }
-   }
-  for (char phi_d_idx = 0; phi_d_idx < STATE_NUM; phi_d_idx++)
-  {
-    if (pitch_dot <= phi_d_states[phi_d_idx + 1])
-    {
-    j = phi_d_idx;
-    break;
-    }
-  }
-  return( j + STATE_NUM * i);
-}
-/*
-  if (pitch < -15)
-  {
-    return 0;
-  }else if (pitch < -10 && pitch > -15)
-  {
-    return 1;
-  }else if (pitch < -5 && pitch > -10)
-  {
-    return 2;
-  }else if (pitch < 0 && pitch > -5)
-  {
-    return 3;
-  }else if (pitch < 5 && pitch > 0)
-  {
-    return 4;
-  }else if (pitch < 10 && pitch > 5)
-  {
-    return 5;
-  }else if (pitch < 15 && pitch > 10)
-  {
-    return 6;
-  }else if (pitch > 15)
-  {
-    return 7;
-  }else
-  {
-    return 0;
-  }*/
 
 
-float reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
-{
-  float next_pitch = -(WHEEL_RADIUS * ((2*M_PI*actions[action_idx]) / 60) * RL_DELTA) + pitch;
-  ROS_INFO("next pitch is: %f", next_pitch);
-  return next_pitch;
-  //float next_state = this->get_state(next_pitch);
-  //return next_state;
-  
+int episode_num = 0;
+int time_step = 0;
+int action = -30;
+int next_state = 0;
 
-}
-
-class q_learning: public reinforcement_learning
-{
-  public:
-    q_learning();
-    ~q_learning();
-    std::vector<float> q_row;
-    std::vector<int> max_value_idxs;
-
-    int test_counter;
-
-    char choose_action(char);
-    void take_action(int);
-};
-
-q_learning::q_learning()
-{
-    this->q_row.resize(6);
-}
-
-q_learning::~q_learning()
-{
-}
-
-char q_learning::choose_action(char curr_state)
-{
-  int random_choice;
-  float random_num;
-  float max_q;
-  int action_choice;
- // std::vector<float> q_row;
- // std::vector<int> max_value_idxs;
-
-  random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
-  //ROS_INFO("random num: %f", random_num);
-
-  
-  if (random_num < epsilon)
-  {
-    //pick randomly
-    random_choice = rand()%ACTIONS;
-    ROS_INFO("random choice: %d", random_choice);
-    return random_choice;
-  }
-  else
-  {
-    //pick best
-    ROS_INFO("picks best");
-    this->q_row = Q[curr_state];
-
-    max_q = *std::max_element(q_row.begin(), q_row.end());
-//    ROS_INFO("max_q: %f", max_q);    
-    for (int i = 0; i < q_row.size(); i++)
-      {
-        if (max_q == q_row[i])
-          {
-            max_value_idxs.push_back(i);     
-	  }
-      }
-    if (max_value_idxs.size() == 1)
-      {
-	action_choice = max_value_idxs[0];
-	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
-        max_value_idxs.clear();
-	return max_value_idxs[0];
-      }
-	else if (max_value_idxs.size() > 1)
-      { 
-//	ROS_INFO("random choice for repeated bests");
-//	ROS_INFO("size: %d", max_value_idxs.size());
-        action_choice = rand()%(max_value_idxs.size());
-	max_value_idxs.clear();
-//	ROS_INFO("rnadom choice is: %d", action_choice);
-        return action_choice;
-      }
-  }
-}
-
-
-
-q_learning controller;
 
 namespace gazebo
 {
@@ -331,6 +120,8 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Joint state publisher
   this->joint_state_publisher_ = this->gazebo_ros_->node()->advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO("%s: Advertise joint_states!", gazebo_ros_->info());
+
+  this->pitch_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::String>("pitch", 10);
 
   // Service for changing operating mode
   ros::AdvertiseServiceOptions ao = ros::AdvertiseServiceOptions::create<rsv_balance_msgs::SetMode>("set_mode",
@@ -611,118 +402,81 @@ void GazeboRsvBalance::UpdateChild()
 {
   common::Time current_time = this->parent_->GetWorld()->GetSimTime();
   double seconds_since_last_update = (current_time - this->last_update_time_).Double();
-  char action_idx;  
-  float pitch;
-  char curr_state;
-  char next_state;
-  int reward;
-  float next_pitch;
-  float next_pitch_dot;
-  rsv_balance_msgs::State msg;
+  
+  // Only execute control loop on specified rate
+  if (seconds_since_last_update > PID_DELTA)
+  {
+
+//	ROS_INFO("seconds since last update: %f", seconds_since_last_update);
 
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
     this->publishWheelJointState();
 
-    pitch = this->imu_pitch_*(180/M_PI);
-      if (std::abs(pitch) > 35)
-      {
-
-	this->restart_delta = parent_->GetWorld()->GetSimTime();
-	if (this->restart_delta - this->restart_delta_prev > 0.1)
-	{
-
-	  ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
-	  controller.episode_num++;
-          msg.episodes = controller.episode_num;
-	  controller.time_steps = 0;
-   	  ROS_INFO("EPISODE NUM: %d", controller.episode_num);
-	  controller.prev_pitch = 0;
-	}
-	this->restart_delta_prev = this->restart_delta;
-	
-      }
-
-
-  // Only execute control loop on specified rate
-  if (seconds_since_last_update > RL_DELTA)
-  {
-
-  //  ROS_INFO("seconds since last update %f", seconds_since_last_update);
-
-    this->last_update_time_ += common::Time(RL_DELTA);
-
+	float pitch;
+	std_msgs::String str;
+	//variables for switch
    switch (this->current_mode_)
-    {
-     case BALANCE:
+  {
+    case BALANCE:
+
+	if (std::abs(this->imu_pitch_*(180/M_PI)) > 35)
+	{
+		this->restart_delta = parent_->GetWorld()->GetSimTime();
+		if (this->restart_delta - this->restart_delta_prev > 0.1)
+		{
+
+//                ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
+                episode_num++;
+                time_step = 0;
+		next_state = 0;
+                ROS_INFO("Ep:%d", episode_num);
+		if (episode_num % 2 == 0)
+			{
+				action = action+1;
+				ROS_INFO("A:%d", action);
+			}
+                }
+                this->restart_delta_prev = this->restart_delta;
+	}
+
+	if (action > 30)
+	{
+	//	stop sim
+		while(1){ }
+	}	
 
 
-       // apply control if segway is still in pitch range
-      if (std::abs(pitch) <=35 && std::abs(pitch) >=0)
-      {
-	controller.pitch = pitch;
-	msg.time_steps = controller.time_steps;
-	msg.error = controller.pitch - 0;
-	msg.prev_pitch = controller.prev_pitch;
+ 	 pitch = this->imu_pitch_*(180/M_PI);
+	  if(std::abs(pitch) > 0 && std::abs(pitch) < 35)
+ 	 {
+
+		if (time_step == 0)
+		{
+			ROS_INFO("Cp:%f", pitch);
+			ROS_INFO("Ts:%d", time_step);		
+			
+		}else if (time_step == 10)
+		{
+			ROS_INFO("Np:%f", pitch);
+			ROS_INFO("Ts:%d", time_step);
+			str.data = "heyCunt";		
+			this->pitch_publisher_.publish(str);
+		}
+	//	ROS_INFO("Episode num: %d", episode_num);
+		if (episode_num == 0 && time_step == 0)
+		{
+			ROS_INFO("A:%d", action);
+		}
 	
 
-	//get state value
-//	ROS_INFO("pitch: %f", controller.pitch);
- 	msg.pitch = controller.pitch;
-	curr_state = controller.get_state(controller.pitch, controller.pitch_dot);
-	ROS_INFO("current state: %d", curr_state);
-
-	// select action
-	action_idx = controller.choose_action(curr_state);	
-	ROS_INFO("action selected: %d", action_idx);	
-//	action_idx = 0; 
-	msg.action = controller.actions[action_idx];
-
-	//take action
-	this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
-	this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
-
-	//get next state
-	next_pitch, next_pitch_dot = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
-	next_state = controller.get_state(next_pitch, next_pitch_dot);
- 	msg.next_pitch = next_pitch;
-	msg.next_pitch_dot = next_pitch_dot;
-
-	//get reward
-	reward = controller.get_reward(next_state);
-
-	//TD update
-	controller.TD_update(curr_state, action_idx, next_state, reward);
-
-	//cycle n repeat
-	if(reward == 1000)
-	{
-		controller.wins++;
-	}
-	else if (reward == 0)
-	{
-		controller.loses++;
-	}
-	curr_state = next_state;	
-
-	//pitch dot
-	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
-	msg.pitch_dot = controller.pitch_dot;
-	ROS_INFO("pitch %f", controller.pitch);
-
-	// publish important data
-	this->state_publisher_.publish(msg);
-
-	// prev pitch
-//	msg.prev_pitch = controller.prev_pitch;
-	ROS_INFO("prev pitch %f", controller.prev_pitch);
-	controller.prev_pitch = controller.pitch;
-
-	//increment timestep
-	controller.time_steps++;
-
-      }	
+		//APPLY ACTION
+		this->joints_[LEFT]->SetForce(0,-action);
+		this->joints_[RIGHT]->SetForce(0, action);
+	
+		time_step++;	
+  }//end of if between 0 and 35
 	
       break;
     case TRACTOR:

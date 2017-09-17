@@ -22,7 +22,6 @@
 #include <sdf/sdf.hh>
 //#include "gazebo_rsv_balance/pid.h"
 
-
 #define PID_DELTA 0.01
 #define FREQ 100
 
@@ -31,7 +30,7 @@ int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 5, ki = 1, kd = 0.2;
+float kp = 7, ki = 0.5, kd = 2.5;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -128,27 +127,6 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Joint state publisher
   this->joint_state_publisher_ = this->gazebo_ros_->node()->advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO("%s: Advertise joint_states!", gazebo_ros_->info());
-
-  //time step publisher
-  this->time_step_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Int64>("time_step", 10);
-  // pitch publisher
-  this->pitch_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("pitch", 10);
-  // cmd publisher
-  this->cmd_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("cmd", 10);
-  // proportional error  publisher
-  this->proportional_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("prop_error", 10);
-  //integral sum publisher
-  this->int_sum_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("int_sum", 10);
-  //integral error publisher
-  this->int_error_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("int_error", 10);
-  //derivative publisher
-  this->derivative_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("deriv", 10);
- // derivative error publisher
-  this->derivative_error_publisher_ = this->gazebo_ros_->node()->advertise<std_msgs::Float32>("deriv_error", 10);
-
-
-//  this->pid_publisher_ = this->gazebo_ros_->node()->advertise<rsv_balance_msgs::PidData("pid_data", 10);
-
 
 
   // Service for changing operating mode
@@ -430,45 +408,15 @@ void GazeboRsvBalance::UpdateChild()
 {
   common::Time current_time = this->parent_->GetWorld()->GetSimTime();
   double seconds_since_last_update = (current_time - this->last_update_time_).Double();
-  
-  // Only execute control loop on specified rate
-  if (seconds_since_last_update > PID_DELTA)
-  {
-
-    ROS_INFO("seconds since last update: %f", seconds_since_last_update);
-    this->last_update_time_ += common::Time(PID_DELTA);
-
+  float pitch; 
+  rsv_balance_msgs::State msg;
+	 
     this->updateIMU();
     this->updateOdometry();
     this->publishOdometry();
     this->publishWheelJointState();
-
-	//variables for switch
-	float error;
-	float error_kp;
-	float error_ki;
-	float error_kd;
-	float derivative;
-	float pid_cmd;
-	float pitch;
-	//published variables
-	std_msgs::Int64 episode_cnt_;
-	std_msgs::Int64 time_step_cnt_;
-	std_msgs::Float32 pitch_;
-	std_msgs::Float32 cmd_;
-	std_msgs::Float32 prop_error_;
-	std_msgs::Float32 int_sum_;
-	std_msgs::Float32 int_error_;
-	std_msgs::Float32 deriv_;
-	std_msgs::Float32 deriv_error_;
-	
-	rsv_balance_msgs::State msg;
-	
-  switch (this->current_mode_)
-  {
-    case BALANCE:
-
-        pitch = this->imu_pitch_*(180/M_PI);
+   
+    pitch = this->imu_pitch_*(180/M_PI);
 
 	// check if episode is over
         if (std::abs(pitch) > 35)
@@ -487,7 +435,28 @@ void GazeboRsvBalance::UpdateChild()
             this->restart_delta_prev = this->restart_delta;
         }
 
-	//apply control if segway is still in pitch range
+
+  // Only execute control loop on specified rate
+  if (seconds_since_last_update > PID_DELTA)
+  {
+
+    ROS_INFO("seconds since last update: %f", seconds_since_last_update);
+    this->last_update_time_ += common::Time(PID_DELTA);
+
+	//variables for switch
+	float error;
+	float error_kp;
+	float error_ki;
+	float error_kd;
+	float derivative;
+	float pid_cmd;
+	//published variables
+
+  switch (this->current_mode_)
+  {
+    case BALANCE:
+
+       	//apply control if segway is still in pitch range
         if (std::abs(pitch) <= 35 && std::abs(pitch) >= 0)
         {
 
@@ -507,7 +476,6 @@ void GazeboRsvBalance::UpdateChild()
                 ROS_INFO("pitch: %f", pitch);
 
                 error_kp = error * kp;
-                prop_error_.data = error_kp;
                 msg.error_proportional = error_kp;
 
                 integral_sum += error * seconds_since_last_update;
