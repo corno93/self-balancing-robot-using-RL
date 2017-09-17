@@ -22,16 +22,16 @@
 #include <cmath>
 #include <algorithm>
 
-#define RL_DELTA 0.1
+#define RL_DELTA 0.05
 #define FREQ 20
 #define STATES 8
 #define ACTIONS 8
 #define WHEEL_RADIUS 0.19
 
 // 2D state space
-#define STATE_NUM 5
-char phi_states[STATE_NUM] = {-30, -20, 0, 20, 30};
-char phi_d_states[STATE_NUM] = {-20, -10, 0, 10, 20};
+#define STATE_NUM 7
+char phi_states[STATE_NUM] = {-9, -6, -3, 0, 3, 6, 9};
+char phi_d_states[STATE_NUM] = {-20, -10,-5, 0, 5, 10, 20};
 
 class reinforcement_learning
 {
@@ -47,7 +47,7 @@ class reinforcement_learning
     float pitch_dot;
     float prev_pitch;
 
-    char actions[ACTIONS] = {30,20,10,5,-5,-10,-20,-30};
+    char actions[ACTIONS] = {-80,-60,-40,-20,20,40,60, 80};
     int rewards[STATES] = {0,50,100,1000,1000,100,50,0};
     reinforcement_learning();
     ~reinforcement_learning();
@@ -62,7 +62,7 @@ class reinforcement_learning
 };
 
 reinforcement_learning::reinforcement_learning()
-  :  Q(STATES, std::vector<float>(ACTIONS,0)), 
+  :  Q((STATE_NUM+1)*(STATE_NUM+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.3),
      epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0)
@@ -101,18 +101,24 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
   char i, j;
   for (char phi_idx = 0; phi_idx < STATE_NUM; phi_idx++)
   {
-    if (pitch <= phi_states[phi_idx+1])
+    if (pitch <= phi_states[phi_idx])
     {
       i = phi_idx;
       break;
+    }else if (pitch > phi_states[STATE_NUM])
+    {
+      i = STATE_NUM;
     }
    }
   for (char phi_d_idx = 0; phi_d_idx < STATE_NUM; phi_d_idx++)
   {
-    if (pitch_dot <= phi_d_states[phi_d_idx + 1])
+    if (pitch_dot <= phi_d_states[phi_d_idx])
     {
-    j = phi_d_idx;
-    break;
+      j = phi_d_idx;
+      break;
+    }else if (pitch_dot > phi_d_states[STATE_NUM])
+    {
+      j = STATE_NUM;
     }
   }
   return( j + STATE_NUM * i);
@@ -151,7 +157,7 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
 float reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
 {
   float next_pitch = -(WHEEL_RADIUS * ((2*M_PI*actions[action_idx]) / 60) * RL_DELTA) + pitch;
-  ROS_INFO("next pitch is: %f", next_pitch);
+ // ROS_INFO("next pitch is: %f", next_pitch);
   return next_pitch;
   //float next_state = this->get_state(next_pitch);
   //return next_state;
@@ -199,13 +205,13 @@ char q_learning::choose_action(char curr_state)
   {
     //pick randomly
     random_choice = rand()%ACTIONS;
-    ROS_INFO("random choice: %d", random_choice);
+    //ROS_INFO("random choice: %d", random_choice);
     return random_choice;
   }
   else
   {
     //pick best
-    ROS_INFO("picks best");
+    //ROS_INFO("picks best");
     this->q_row = Q[curr_state];
 
     max_q = *std::max_element(q_row.begin(), q_row.end());
@@ -637,8 +643,9 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.episode_num++;
           msg.episodes = controller.episode_num;
 	  controller.time_steps = 0;
-   	  ROS_INFO("EPISODE NUM: %d", controller.episode_num);
+   	  //ROS_INFO("EPISODE NUM: %d", controller.episode_num);
 	  controller.prev_pitch = 0;
+	  controller.pitch_dot = 0;
 	}
 	this->restart_delta_prev = this->restart_delta;
 	
@@ -668,23 +675,22 @@ void GazeboRsvBalance::UpdateChild()
 	
 
 	//get state value
-//	ROS_INFO("pitch: %f", controller.pitch);
+	ROS_INFO("pitch: %f", controller.pitch);
+	ROS_INFO("pitch dot: %f", controller.pitch_dot);
  	msg.pitch = controller.pitch;
 	curr_state = controller.get_state(controller.pitch, controller.pitch_dot);
 	ROS_INFO("current state: %d", curr_state);
 
 	// select action
-	action_idx = controller.choose_action(curr_state);	
-	ROS_INFO("action selected: %d", action_idx);	
-//	action_idx = 0; 
+	action_idx = controller.choose_action(curr_state);
+	ROS_INFO("action idx %d and action: %d", action_idx, controller.actions[action_idx]);	
 	msg.action = controller.actions[action_idx];
-
 	//take action
 	this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
 	this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
 
 	//get next state
-	next_pitch, next_pitch_dot = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
+/*	next_pitch, next_pitch_dot = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
 	next_state = controller.get_state(next_pitch, next_pitch_dot);
  	msg.next_pitch = next_pitch;
 	msg.next_pitch_dot = next_pitch_dot;
@@ -705,18 +711,16 @@ void GazeboRsvBalance::UpdateChild()
 		controller.loses++;
 	}
 	curr_state = next_state;	
-
+*/
 	//pitch dot
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
 	msg.pitch_dot = controller.pitch_dot;
-	ROS_INFO("pitch %f", controller.pitch);
 
 	// publish important data
 	this->state_publisher_.publish(msg);
 
 	// prev pitch
 //	msg.prev_pitch = controller.prev_pitch;
-	ROS_INFO("prev pitch %f", controller.prev_pitch);
 	controller.prev_pitch = controller.pitch;
 
 	//increment timestep
@@ -764,3 +768,4 @@ void GazeboRsvBalance::QueueThread()
 
 GZ_REGISTER_MODEL_PLUGIN(GazeboRsvBalance)
 }  // namespace gazebo
+
