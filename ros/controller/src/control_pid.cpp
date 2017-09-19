@@ -11,10 +11,14 @@
 #include <iostream>
 
 #include "controller/PidData.h"
+#include <std_msgs/Int16.h>
 
-#define FREQUENCY 100
-#define PID_DELTA 0.01
+#define FREQUENCY 50
+#define PID_DELTA 0.02
+#define BAUD_RATE 115200
 
+
+int test_counter = 0;
 
 namespace patch
 {
@@ -68,17 +72,17 @@ Controller::Controller()
 	    ,   time_steps(0)
 {
 	//Ros Init (subscribe to IMU topic)
-	sub = n.subscribe("data", 1000, &Controller::IMU_callback, this);
+	sub = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
 	
 	//Serial Init
-	if ((fd = serialOpen("/dev/ttyACM0",9600))<0)
+/*	if ((fd = serialOpen("/dev/ttyACM0",BAUD_RATE))<0)
 	{
 		ROS_INFO("Unable to open serial device");
 	}	
 	if (wiringPiSetup() == -1)
 	{
 		ROS_INFO("Unable to start wiringPi");
-	}
+	}*/
 }
 
 Controller::~Controller()
@@ -228,10 +232,13 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(FREQUENCY); 
 
 	ros::Publisher pid_data = n.advertise<controller::PidData>("/pid_data", 1000);
+	ros::Publisher rpm_command = n.advertise<std_msgs::Int16>("/rpm_cmd", 1000);
 
 	PID pid(6.5,0.0,0.15);
 
 	std::string command;
+        std_msgs::Int16 rpm_msg;
+	
 	int pid_cmd;
 
 	while (ros::ok())
@@ -249,10 +256,12 @@ int main(int argc, char **argv)
 		pid_cmd = pid.saturate(pid_cmd);
 		//ROS_INFO("pid cmd: %d", pid_cmd);
 	
-		command = pid.motor_cmd_generator(pid_cmd);
-		std::cout<<"motor cmd: "<<command<<std::endl;
-
-		pid.write_serial_command(command);
+	//	command = pid.motor_cmd_generator(pid_cmd);
+	//	std::cout<<"motor cmd: "<<command<<std::endl;
+		rpm_msg.data = test_counter;//pid_cmd;
+		rpm_command.publish(rpm_msg);
+	//	pid.write_serial_command(command);
+		test_counter++;
 
 		pid_data.publish(pid.msg);
 
