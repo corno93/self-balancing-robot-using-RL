@@ -29,9 +29,36 @@
 #define WHEEL_RADIUS 0.19
 
 // 2D state space
-#define STATE_NUM 7
-char phi_states[STATE_NUM] = {-9, -6, -3, 0, 3, 6, 9};
-char phi_d_states[STATE_NUM] = {-20, -10,-5, 0, 5, 10, 20};
+#define STATE_NUM 9
+#define REWARD_1 4
+#define REWARD_2 12
+#define REWARD_3 20
+#define REWARD_4 28
+char phi_states[STATE_NUM] = {-9, -6, -3, -1.5, 0, 1.5, 3, 6, 9};
+char phi_d_states[STATE_NUM] = {-30,-20, -10,-5, 0, 5, 10, 20,30};
+char reward_1[4] = {44, 45, 54, 55};
+char reward_2[12] = {33, 34, 35, 36, 43, 46, 53, 56, 63, 64, 65, 66};
+char reward_3[20] = {22, 23, 24, 25, 26, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72,73,74,75,76,77};
+char reward_4[28] = {11,12,13,14,15,16,17,18,21,28,31,38,41,48,51,58,61,68,71,78,81,82,83,84,85,86,87,88};
+
+
+
+const float A_model[6][6] = {
+  {0, 1, 0, 0, 0, 0},
+  {0, 0, -12.2988, 0, -0.0111, -0.0111},
+  {0, 0, 0, 1, 0, 0 },
+  {0, 0, 205.8717, 0, -41.1946, -41.1946},
+  {0, -0.0001, 0, 0, 0, 0},
+  {0, -0.0001, 0, 0, 0, 0}};
+
+const float B_model[6][1] = {
+  {0},
+  {0},
+  {0},
+  {0},
+  {0.0322},
+  {0.0322}};
+
 
 class reinforcement_learning
 {
@@ -46,6 +73,7 @@ class reinforcement_learning
     float pitch;
     float pitch_dot;
     float prev_pitch;
+    rsv_balance_msgs::State msg;
 
     char actions[ACTIONS] = {-80,-60,-40,-20,20,40,60, 80};
     int rewards[STATES] = {0,50,100,1000,1000,100,50,0};
@@ -57,7 +85,7 @@ class reinforcement_learning
     char virtual choose_action(char) = 0;
     void TD_update(char, char, char, int);
     char get_state(float, float);
-    float get_next_state(float,float, char);
+    char get_next_state(float,float, char);
     int get_reward(char);
 };
 
@@ -75,7 +103,35 @@ reinforcement_learning::~reinforcement_learning()
 
 int reinforcement_learning::get_reward(char next_state)
 {
-  return rewards[next_state];
+  for (int i = 0; i < REWARD_1; i++)
+  {
+    if (next_state == reward_1[i])
+    {
+      return 1000;
+    }
+  }
+  for (int i = 0; i < REWARD_2; i++)
+  {
+    if (next_state == reward_2[i])
+    {
+    return 500;
+    }
+  }
+  for (int i = 0; i < REWARD_3; i++)
+  {
+  if (next_state == reward_3[i])
+    {
+      return 100;
+    }
+  }
+  for (int i = 0; i < REWARD_4; i++)
+  {
+  if (next_state == reward_4[i])
+    {
+      return 10;
+    }
+  }
+  return -100;
 }
 
 char reinforcement_learning::choose_action(char)
@@ -121,47 +177,72 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
       j = STATE_NUM;
     }
   }
-  return( j + STATE_NUM * i);
+  return( j + (STATE_NUM + 1) * i);
 }
-/*
-  if (pitch < -15)
-  {
-    return 0;
-  }else if (pitch < -10 && pitch > -15)
-  {
-    return 1;
-  }else if (pitch < -5 && pitch > -10)
-  {
-    return 2;
-  }else if (pitch < 0 && pitch > -5)
-  {
-    return 3;
-  }else if (pitch < 5 && pitch > 0)
-  {
-    return 4;
-  }else if (pitch < 10 && pitch > 5)
-  {
-    return 5;
-  }else if (pitch < 15 && pitch > 10)
-  {
-    return 6;
-  }else if (pitch > 15)
-  {
-    return 7;
-  }else
-  {
-    return 0;
-  }*/
 
 
-float reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
+
+char reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
 {
-  float next_pitch = -(WHEEL_RADIUS * ((2*M_PI*actions[action_idx]) / 60) * RL_DELTA) + pitch;
- // ROS_INFO("next pitch is: %f", next_pitch);
-  return next_pitch;
-  //float next_state = this->get_state(next_pitch);
-  //return next_state;
-  
+  float x_current[6][1] = {
+    {0},
+    {0},
+    {pitch},
+    {pitch_dot},
+    {-actions[action_idx]},
+    {actions[action_idx]}};
+
+//STRANGEST ERROR IN THE FUCKIN WORLD...
+
+  std::cout<<"-2: "<<x_current[-2][1]<<std::endl;
+  std::cout<<"-1: "<<x_current[-1][1]<<std::endl;
+   std::cout<<"0: "<<x_current[0][1]<<std::endl;
+   std::cout<<"1: "<<x_current[1][1]<<std::endl;
+std::cout<<"2: "<<x_current[2][1]<<std::endl;
+std::cout<<"3: "<<x_current[3][1]<<std::endl;
+ std::cout<<"4: "<<x_current[4][1]<<std::endl;
+ std::cout<<"5:  "<<x_current[5][1]<<std::endl;
+  std::cout<<"6: "<<x_current[6][1]<<std::endl; 
+
+  return 55;
+
+  char next_state;
+  const char u = 1;
+  float A_x_current[6][1];
+  float x_next[6][1];
+  float next_pitch;
+  float next_pitch_dot;
+  // A*x_current
+  for (int i = -1; i < 6-1; i++)
+  {
+    for (int j = -1; j < 6-1; j++)
+      {
+        A_x_current[i][1]+= A_model[i][j] * x_current[j][1];
+      }
+  } 
+  //x_current + (A*current + B*u)*dt
+  for (int i = -1; i < 5; i ++)
+  {
+    x_next[i][1] = x_current[i][1] + (A_x_current[i][1] + B[i][1])*RL_DELTA;
+  }
+
+  std::cout<<"out-1:"<<x_next[-1][1]<<std::endl;
+  std::cout<<"out-0:"<<x_next[0][1]<<std::endl;
+  std::cout<<"out-1:"<<x_next[1][1]<<std::endl;
+  std::cout<<"out-2:"<<x_next[2][1]<<std::endl;
+  std::cout<<"out-3:"<<x_next[3][1]<<std::endl;
+  std::cout<<"out-4:"<<x_next[4][1]<<std::endl;
+  std::cout<<"out-5:"<<x_next[5][1]<<std::endl;
+ 
+  next_pitch = x_next[2][1];
+  next_pitch_dot = x_next[3][1];
+  std::cout<<"next pitch"<<next_pitch<<std::endl;
+  std::cout<<"next pd " <<next_pitch_dot<<std::endl;
+  msg.next_pitch = next_pitch;
+  msg.next_pitch_dot = next_pitch_dot;
+  next_state = get_state(next_pitch, next_pitch_dot);  
+
+  return next_state;
 
 }
 
@@ -624,7 +705,6 @@ void GazeboRsvBalance::UpdateChild()
   int reward;
   float next_pitch;
   float next_pitch_dot;
-  rsv_balance_msgs::State msg;
 
     this->updateIMU();
     this->updateOdometry();
@@ -641,7 +721,7 @@ void GazeboRsvBalance::UpdateChild()
 
 	  ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
 	  controller.episode_num++;
-          msg.episodes = controller.episode_num;
+          controller.msg.episodes = controller.episode_num;
 	  controller.time_steps = 0;
    	  //ROS_INFO("EPISODE NUM: %d", controller.episode_num);
 	  controller.prev_pitch = 0;
@@ -669,58 +749,60 @@ void GazeboRsvBalance::UpdateChild()
       if (std::abs(pitch) <=35 && std::abs(pitch) >=0)
       {
 	controller.pitch = pitch;
-	msg.time_steps = controller.time_steps;
-	msg.error = controller.pitch - 0;
-	msg.prev_pitch = controller.prev_pitch;
+	controller.msg.time_steps = controller.time_steps;
+	controller.msg.error = controller.pitch - 0;
+	controller.msg.prev_pitch = controller.prev_pitch;
 	
 
 	//get state value
 	ROS_INFO("pitch: %f", controller.pitch);
 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
- 	msg.pitch = controller.pitch;
+ 	controller.msg.pitch = controller.pitch;
 	curr_state = controller.get_state(controller.pitch, controller.pitch_dot);
 	ROS_INFO("current state: %d", curr_state);
 
 	// select action
 	action_idx = controller.choose_action(curr_state);
 	ROS_INFO("action idx %d and action: %d", action_idx, controller.actions[action_idx]);	
-	msg.action = controller.actions[action_idx];
+	controller.msg.action = controller.actions[action_idx];
+
 	//take action
 	this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
 	this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
 
 	//get next state
-/*	next_pitch, next_pitch_dot = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
-	next_state = controller.get_state(next_pitch, next_pitch_dot);
- 	msg.next_pitch = next_pitch;
-	msg.next_pitch_dot = next_pitch_dot;
-
+	next_state = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
+	
 	//get reward
 	reward = controller.get_reward(next_state);
+	controller.msg.reward = reward;
+	ROS_INFO("reward is %d", reward);	
 
 	//TD update
-	controller.TD_update(curr_state, action_idx, next_state, reward);
+//	controller.TD_update(curr_state, action_idx, next_state, reward);
 
 	//cycle n repeat
 	if(reward == 1000)
 	{
 		controller.wins++;
+		controller.msg.wins = controller.wins;
 	}
 	else if (reward == 0)
 	{
 		controller.loses++;
+		controller.msg.loses = controller.loses;
 	}
-	curr_state = next_state;	
-*/
+	// move to that next state
+	curr_state = next_state;//MAYBE NOT...	
+
 	//pitch dot
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
-	msg.pitch_dot = controller.pitch_dot;
+	controller.msg.pitch_dot = controller.pitch_dot;
 
 	// publish important data
-	this->state_publisher_.publish(msg);
+	this->state_publisher_.publish(controller.msg);
 
 	// prev pitch
-//	msg.prev_pitch = controller.prev_pitch;
 	controller.prev_pitch = controller.pitch;
 
 	//increment timestep
