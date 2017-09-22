@@ -73,6 +73,8 @@ class reinforcement_learning
     float pitch;
     float pitch_dot;
     float prev_pitch;
+    char current_state;
+    char next_state;
     rsv_balance_msgs::State msg;
 
     char actions[ACTIONS] = {-80,-60,-40,-20,20,40,60, 80};
@@ -155,28 +157,43 @@ void reinforcement_learning::TD_update(char curr_state, char action, char next_s
 char reinforcement_learning::get_state(float pitch, float pitch_dot)
 {
   char i, j;
+  i = 0;
+  j = 0;
+
+  
+
+
+
+
   for (char phi_idx = 0; phi_idx < STATE_NUM; phi_idx++)
   {
     if (pitch <= phi_states[phi_idx])
     {
       i = phi_idx;
       break;
-    }else if (pitch > phi_states[STATE_NUM])
+    }else if (pitch > phi_states[STATE_NUM - 1])
     {
       i = STATE_NUM;
-    }
+      break;
+     }
    }
+	ROS_INFO("phi_idx: %d", i);
+ 
+
   for (char phi_d_idx = 0; phi_d_idx < STATE_NUM; phi_d_idx++)
   {
     if (pitch_dot <= phi_d_states[phi_d_idx])
     {
       j = phi_d_idx;
       break;
-    }else if (pitch_dot > phi_d_states[STATE_NUM])
+    }else if (pitch_dot > phi_d_states[STATE_NUM - 1])
     {
       j = STATE_NUM;
+      break;
     }
-  }
+ }
+  ROS_INFO("phi_d_ix: %d", j);
+ 
   return( j + (STATE_NUM + 1) * i);
 }
 
@@ -192,20 +209,6 @@ char reinforcement_learning::get_next_state(float pitch, float pitch_dot, char a
     {-actions[action_idx]},
     {actions[action_idx]}};
 
-//STRANGEST ERROR IN THE FUCKIN WORLD...
-
-  std::cout<<"-2: "<<x_current[-2][1]<<std::endl;
-  std::cout<<"-1: "<<x_current[-1][1]<<std::endl;
-   std::cout<<"0: "<<x_current[0][1]<<std::endl;
-   std::cout<<"1: "<<x_current[1][1]<<std::endl;
-std::cout<<"2: "<<x_current[2][1]<<std::endl;
-std::cout<<"3: "<<x_current[3][1]<<std::endl;
- std::cout<<"4: "<<x_current[4][1]<<std::endl;
- std::cout<<"5:  "<<x_current[5][1]<<std::endl;
-  std::cout<<"6: "<<x_current[6][1]<<std::endl; 
-
-  return 55;
-
   char next_state;
   const char u = 1;
   float A_x_current[6][1];
@@ -213,29 +216,21 @@ std::cout<<"3: "<<x_current[3][1]<<std::endl;
   float next_pitch;
   float next_pitch_dot;
   // A*x_current
-  for (int i = -1; i < 6-1; i++)
+  for (int i = 1; i < 6; i++)
   {
-    for (int j = -1; j < 6-1; j++)
+    for (int j = 1; j < 6; j++)
       {
-        A_x_current[i][1]+= A_model[i][j] * x_current[j][1];
+        A_x_current[i][0]+= A_model[i][j] * x_current[j][0];
       }
   } 
   //x_current + (A*current + B*u)*dt
-  for (int i = -1; i < 5; i ++)
+  for (int i = 1; i < 6; i ++)
   {
-    x_next[i][1] = x_current[i][1] + (A_x_current[i][1] + B[i][1])*RL_DELTA;
+    x_next[i][0] = x_current[i][0] + (A_x_current[i][0] + B[i][0])*RL_DELTA;
   }
-
-  std::cout<<"out-1:"<<x_next[-1][1]<<std::endl;
-  std::cout<<"out-0:"<<x_next[0][1]<<std::endl;
-  std::cout<<"out-1:"<<x_next[1][1]<<std::endl;
-  std::cout<<"out-2:"<<x_next[2][1]<<std::endl;
-  std::cout<<"out-3:"<<x_next[3][1]<<std::endl;
-  std::cout<<"out-4:"<<x_next[4][1]<<std::endl;
-  std::cout<<"out-5:"<<x_next[5][1]<<std::endl;
  
-  next_pitch = x_next[2][1];
-  next_pitch_dot = x_next[3][1];
+  next_pitch = x_next[2][0];
+  next_pitch_dot = x_next[3][0];
   std::cout<<"next pitch"<<next_pitch<<std::endl;
   std::cout<<"next pd " <<next_pitch_dot<<std::endl;
   msg.next_pitch = next_pitch;
@@ -253,8 +248,6 @@ class q_learning: public reinforcement_learning
     ~q_learning();
     std::vector<float> q_row;
     std::vector<int> max_value_idxs;
-
-    int test_counter;
 
     char choose_action(char);
     void take_action(int);
@@ -418,6 +411,10 @@ void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Joint state publisher
   this->joint_state_publisher_ = this->gazebo_ros_->node()->advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO("%s: Advertise joint_states!", gazebo_ros_->info());
+
+  this->state_publisher_ = this->gazebo_ros_->node()->advertise<rsv_balance_msgs::State>("state", 10);
+  
+
 
   // Service for changing operating mode
   ros::AdvertiseServiceOptions ao = ros::AdvertiseServiceOptions::create<rsv_balance_msgs::SetMode>("set_mode",
@@ -700,8 +697,9 @@ void GazeboRsvBalance::UpdateChild()
   double seconds_since_last_update = (current_time - this->last_update_time_).Double();
   char action_idx;  
   float pitch;
-  char curr_state;
+  char current_state;
   char next_state;
+  char state;
   int reward;
   float next_pitch;
   float next_pitch_dot;
@@ -723,7 +721,6 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.episode_num++;
           controller.msg.episodes = controller.episode_num;
 	  controller.time_steps = 0;
-   	  //ROS_INFO("EPISODE NUM: %d", controller.episode_num);
 	  controller.prev_pitch = 0;
 	  controller.pitch_dot = 0;
 	}
@@ -736,7 +733,7 @@ void GazeboRsvBalance::UpdateChild()
   if (seconds_since_last_update > RL_DELTA)
   {
 
-  //  ROS_INFO("seconds since last update %f", seconds_since_last_update);
+    ROS_INFO("seconds since last update %f", seconds_since_last_update);
 
     this->last_update_time_ += common::Time(RL_DELTA);
 
@@ -752,48 +749,70 @@ void GazeboRsvBalance::UpdateChild()
 	controller.msg.time_steps = controller.time_steps;
 	controller.msg.error = controller.pitch - 0;
 	controller.msg.prev_pitch = controller.prev_pitch;
-	
-
-	//get state value
 	ROS_INFO("pitch: %f", controller.pitch);
 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
- 	controller.msg.pitch = controller.pitch;
-	curr_state = controller.get_state(controller.pitch, controller.pitch_dot);
-	ROS_INFO("current state: %d", curr_state);
-
-	// select action
-	action_idx = controller.choose_action(curr_state);
-	ROS_INFO("action idx %d and action: %d", action_idx, controller.actions[action_idx]);	
-	controller.msg.action = controller.actions[action_idx];
-
-	//take action
-	this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
-	this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
-
-	//get next state
-	next_state = controller.get_next_state(controller.pitch, controller.pitch_dot, action_idx);
+  	controller.msg.pitch = controller.pitch;
+	state = controller.get_state(controller.pitch, controller.pitch_dot);
 	
-	//get reward
-	reward = controller.get_reward(next_state);
-	controller.msg.reward = reward;
-	ROS_INFO("reward is %d", reward);	
 
-	//TD update
-//	controller.TD_update(curr_state, action_idx, next_state, reward);
-
-	//cycle n repeat
-	if(reward == 1000)
+	if (controller.time_steps < 1)
 	{
+   	  //get state value
+  	  controller.current_state = state;
+	  controller.msg.current_state = controller.current_state;
+	  ROS_INFO("current state: %d", controller.current_state);
+
+    	  // select action
+	  action_idx = controller.choose_action(controller.current_state);
+	  ROS_INFO("action idx %d and action: %d", action_idx, controller.actions[action_idx]);	
+	  controller.msg.action = controller.actions[action_idx];
+
+	  //take action
+	  this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
+	  this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
+	}else if (controller.time_steps >= 1)
+	{
+   	  //get next state value
+	  controller.next_state = state;
+	  controller.msg.next_state = controller.next_state;
+	  ROS_INFO("next state: %d", controller.next_state);
+
+	  //get reward
+	  reward = controller.get_reward(controller.next_state);
+	  controller.msg.reward = reward;
+	  ROS_INFO("reward is %d", reward);	
+
+	  //TD update
+	  controller.TD_update(controller.current_state, action_idx, controller.next_state, reward);
+
+	  // publish Q(s,a) matrix
+
+    	  //cycle n repeat
+	  if(reward == 1000)
+	  {
 		controller.wins++;
 		controller.msg.wins = controller.wins;
-	}
-	else if (reward == 0)
-	{
+	  }
+	  else if (reward == 0)
+	  {
 		controller.loses++;
 		controller.msg.loses = controller.loses;
+	  }
+	 
+	 //move to that next state
+	  controller.current_state = controller.next_state;
+	
+	  // select action
+	  action_idx = controller.choose_action(controller.current_state);
+	  ROS_INFO("action idx %d and action: %d", action_idx, controller.actions[action_idx]);	
+	  controller.msg.action = controller.actions[action_idx];
+
+	  //take action
+	  this->joints_[LEFT]->SetForce(0,-controller.actions[action_idx]);
+	  this->joints_[RIGHT]->SetForce(0, controller.actions[action_idx]);
+	
 	}
-	// move to that next state
-	curr_state = next_state;//MAYBE NOT...	
+
 
 	//pitch dot
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
