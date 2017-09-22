@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 	
 	//	command = pid.motor_cmd_generator(pid_cmd);
 	//	std::cout<<"motor cmd: "<<command<<std::endl;
-		rpm_msg.data = test_counter;//pid_cmd;
+		rpm_msg.data = pid_cmd;
 		rpm_command.publish(rpm_msg);
 	//	pid.write_serial_command(command);
 		test_counter++;
