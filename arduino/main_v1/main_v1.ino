@@ -17,10 +17,9 @@
 #define M2pin 11
 #define STOP 126  //was 128 at some point...
 #define ledPin 13
+#define KT 0.1552
 
 char log_msg[50] = {0};
-char hello[13] = "hello world!";
-int test_counter = 0;
 
 //OBJECT INSTANCES
 WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
@@ -41,6 +40,14 @@ int RPM_actual_m1;
 int RPM_ref_m2;
 int RPM_actual_m2;
 int PID_count;
+
+//TORQUE CALC VARIABLES:
+float raw_value_m1;
+float raw_value_m2;
+float voltage_m1;
+float voltage_m2;
+float amps_m1;
+float amps_m2;
 
 //CALLBACK FROM /rpm_cmd TOPIC
 void rpm_cmdCb( const std_msgs::Int16& msg){
@@ -87,16 +94,40 @@ void loop()
   sprintf(log_msg, "rpm_cmd: %d", RPM_ref_m1);
   nh.loginfo(log_msg);
   
+  arduino_msg.reference_rpm = RPM_ref_m1;
+
+  
   // compute PID gains and write to motors when ready
     if (PID_flag)
      {
         PID_flag = false;
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+        
+        // get averaged ADC values for current in motor's armature
+//        for (int i = 0; i < 5; i++)
+//        {
+//          raw_value_m1 += analogRead(A15);  //analog read takes 100 microseconds (0.0001s)
+//          raw_value_m2 += analogRead(A14);
+//        }
+//        voltage_m1 = ((raw_value_m1 / 5) / 1023)*5000;
+//        voltage_m2 = ((raw_value_m2 / 5) / 1023)*5000;
+//        amps_m1 = ((voltage_m1 - 2500)/185);
+//        amps_m2 = ((voltage_m2 - 2500)/185);
+//        raw_value_m1 = 0;
+//        raw_value_m2 = 0;  
+//        arduino_msg.voltage_1 = voltage_m1;
+//        arduino_msg.voltage_2 = voltage_m2;
+//        arduino_msg.current_1 = amps_m1;
+//        arduino_msg.current_2 = amps_m2;
+//        arduino_msg.torque_1 = amps_m1 * KT;
+//        arduino_msg.torque_2 = amps_m2 * KT;
+        
+        // publish arduino data
+        arduino_chatter.publish( &arduino_msg );
      }
   
-   // publish arduino data
-    arduino_chatter.publish( &arduino_msg );
+
 
 
 }
@@ -145,11 +176,10 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*6000)/1920;
     RPM_actual_m2 = (encoder2count*6000)/1920;
-    arduino_msg.encoder1 = test_counter;
+    arduino_msg.encoder1 = encoder1count;
     arduino_msg.encoder2 = encoder2count;
-    arduino_msg.rpm1 = test_counter;
-    arduino_msg.rpm2 = RPM_actual_m2;
-    test_counter++;
+    arduino_msg.actual_rpm1 = RPM_actual_m1;
+    arduino_msg.actual_rpm2 = RPM_actual_m2;
 
     encoder1count = 0;
     encoder2count = 0;
