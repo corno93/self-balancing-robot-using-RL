@@ -152,6 +152,8 @@ void reinforcement_learning::TD_update(char curr_state, char action, char next_s
   msg.td_update = Q[curr_state][action];
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
+  msg.td_update_test = 1000;
+
 }
 
 char reinforcement_learning::get_state(float pitch, float pitch_dot)
@@ -799,7 +801,18 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.time_steps = 0;
 	  controller.prev_pitch = 0;
 	  controller.pitch_dot = 0;
-//	  controller.msg = rsv_balance_msgs::State;
+	  
+	  //clear message
+	  controller.msg.pitch = 0;
+	  controller.msg.pitch_dot = 0;
+	  controller.msg.action = 0;
+	  controller.msg.action_idx = 0;
+	  controller.msg.current_state = 0;
+	  controller.msg.next_state = 0;
+	  controller.msg.td_update = 0;
+	  controller.msg.td_target = 0;
+	  controller.msg.td_error = 0;
+	  
 	}
 	this->restart_delta_prev = this->restart_delta;
 	
@@ -818,9 +831,8 @@ void GazeboRsvBalance::UpdateChild()
     {
      case BALANCE:
 
-	ROS_INFO("alpha var: %f", controller.alpha);
        // apply control if segway is still in pitch range
-      if (std::abs(pitch) <= 10)
+      if (std::abs(pitch) <= 10 && std::abs(pitch) >= 0)
       {
 	controller.pitch = pitch;
 	controller.msg.time_steps = controller.time_steps;
@@ -829,9 +841,11 @@ void GazeboRsvBalance::UpdateChild()
 	ROS_INFO("pitch: %f", controller.pitch);
 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
   	controller.msg.pitch = controller.pitch;
+	controller.msg.pitch_dot = controller.pitch_dot;
 	state = controller.get_state(controller.pitch, controller.pitch_dot);
-	
-
+	ROS_INFO("episode: %d", controller.episode_num);
+	ROS_INFO("time step: %d", controller.time_steps);	
+	ROS_INFO("state: %d", state);
 	if (controller.time_steps < 1)
 	{
    	  //get state value
@@ -845,6 +859,14 @@ void GazeboRsvBalance::UpdateChild()
 	  //take action
 	  this->joints_[LEFT]->SetForce(0,-controller.action);
 	  this->joints_[RIGHT]->SetForce(0, controller.action);
+	  controller.msg.current_state = controller.current_state;
+	//increment timestep
+//	controller.time_steps++;
+	controller.msg.action = controller.action;
+	controller.msg.action_idx = controller.action_idx;
+
+
+
 	}else if (controller.time_steps >= 1)
 	{
    	  //get next state value
@@ -885,9 +907,9 @@ void GazeboRsvBalance::UpdateChild()
 	  this->joints_[RIGHT]->SetForce(0, controller.action);
 
   
-	//pitch dot
+	//pitch dot/a
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
-	controller.msg.pitch_dot = controller.pitch_dot;
+//	controller.msg.pitch_dot = controller.pitch_dot;
 
 	// prev pitch
 	controller.prev_pitch = controller.pitch;
@@ -901,13 +923,15 @@ void GazeboRsvBalance::UpdateChild()
 	controller.msg.action_idx = controller.action_idx;
 
 
-	// publish important data
-	this->state_publisher_.publish(controller.msg);
 
+	//increment timestep
+//	controller.time_steps++;
 
 	}
 
-	//increment timestep
+	// publish important data
+	this->state_publisher_.publish(controller.msg);
+
 	controller.time_steps++;
 
 	//decrease epsilon and alpha
