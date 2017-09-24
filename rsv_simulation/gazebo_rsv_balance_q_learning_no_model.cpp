@@ -25,7 +25,7 @@
 #define RL_DELTA 0.05
 #define FREQ 20
 #define ACTIONS 5
-char actions[ACTIONS] = {-10,-5,0,5,10};
+char actions[ACTIONS] = {-30,-10,0,10,30};
  
 #define WHEEL_RADIUS 0.19
 
@@ -866,6 +866,9 @@ void GazeboRsvBalance::UpdateChild()
 	controller.msg.action_idx = controller.action_idx;
 
 
+	this->state_publisher_.publish(controller.msg);
+
+
 
 	}else if (controller.time_steps >= 1)
 	{
@@ -923,6 +926,8 @@ void GazeboRsvBalance::UpdateChild()
 	controller.msg.action_idx = controller.action_idx;
 
 
+	this->state_publisher_.publish(controller.msg);
+
 
 	//increment timestep
 //	controller.time_steps++;
@@ -930,12 +935,10 @@ void GazeboRsvBalance::UpdateChild()
 	}
 
 	// publish important data
-	this->state_publisher_.publish(controller.msg);
-
 	controller.time_steps++;
 
 	//decrease epsilon and alpha
-	if (controller.episode_num % 300 == 0 && controller.episode_num > 1)
+	if (controller.episode_num % 30 == 0 && controller.episode_num > 1)
 	{
 	  ROS_INFO("DECREASE PARAMS");
 	  controller.alpha = controller.alpha/2;
