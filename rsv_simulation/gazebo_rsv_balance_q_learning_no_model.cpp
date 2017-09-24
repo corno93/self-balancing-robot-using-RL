@@ -22,7 +22,7 @@
 #include <cmath>
 #include <algorithm>
 
-#define RL_DELTA 0.05
+#define RL_DELTA 0.01
 #define FREQ 20
 #define ACTIONS 5
 char actions[ACTIONS] = {-30,-10,0,10,30};
@@ -77,7 +77,7 @@ class reinforcement_learning
 reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM+1)*(STATE_NUM+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
-     loses(0), discount_factor(0.3), alpha(0.7),
+     loses(0), discount_factor(0.3), alpha(0.4),
      epsilon(0.4), pitch_dot(0.0), prev_pitch(0.0)
 {
 }
@@ -941,7 +941,6 @@ void GazeboRsvBalance::UpdateChild()
 	if (controller.episode_num % 30 == 0 && controller.episode_num > 1)
 	{
 	  ROS_INFO("DECREASE PARAMS");
-	  controller.alpha = controller.alpha/2;
 	  controller.epsilon = controller.epsilon/2;
 	}
 
