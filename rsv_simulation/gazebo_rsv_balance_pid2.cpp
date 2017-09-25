@@ -25,12 +25,12 @@
 #define PID_DELTA 0.01
 #define FREQ 100
 
-int reference_pitch = 0;
+int reference_pitch = 2;
 int episode_num = 0;
 int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
-float kp = 7, ki = 0.5, kd = 2.5;
+float kp = 7, ki = 10, kd = 2.5;
 //gazebo::common:Time restart_delta;
 //gazebo::common:Time restart_delta_prev;
 
@@ -463,15 +463,15 @@ void GazeboRsvBalance::UpdateChild()
             ROS_INFO("EPISODE NUM: %d", episode_num);
 
             //reset integral term when balanced
-            if (std::abs(pitch) < 1)
+/*            if (pitch > 0.5)
             {
-            //    integral_sum = 0;
+                integral_sum = 0;
                 ROS_INFO("reset integral");
-            }
+            }*/
 
                 msg.time_steps = time_step;
 
-                error = pitch - 0;//reference_pitch;
+                error = pitch - reference_pitch;
                 msg.error = error;
                 ROS_INFO("pitch: %f", pitch);
 
