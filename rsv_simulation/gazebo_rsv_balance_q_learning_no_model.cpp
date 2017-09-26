@@ -22,18 +22,21 @@
 #include <cmath>
 #include <algorithm>
 
-#define RL_DELTA 0.02
-#define FREQ 50
+#define PITCH_THRESHOLD 3.5
+#define RL_DELTA 0.04
+#define FREQ 25
 #define ACTIONS 5
-char actions[ACTIONS] = {-30,-10,0,10,30};
- 
+//char actions[ACTIONS] = {-30,-10,0,10,30};
+char actions[ACTIONS] = {-3, -1, 0, 1, 3};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 100
 
 // 2D state space
-#define STATE_NUM 9
-float phi_states[STATE_NUM] = {-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3};
-float phi_d_states[STATE_NUM] = {-30, -20, -10,-5, 0, 5, 10, 20, 30};
+#define STATE_NUM_PHI 9
+#define STATE_NUM_PHI_D 11
+float phi_states[STATE_NUM_PHI] = {-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3};
+float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
+
 
 
 class reinforcement_learning
@@ -68,7 +71,7 @@ class reinforcement_learning
 };
 
 reinforcement_learning::reinforcement_learning()
-  :  Q((STATE_NUM+1)*(STATE_NUM+1), std::vector<float>(ACTIONS,0)), 
+  :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
      epsilon(0.4), pitch_dot(0.0), prev_pitch(0.0)
@@ -103,16 +106,16 @@ void reinforcement_learning::TD_update(char curr_state, char action, char next_s
   td_target = reward + discount_factor*Q[next_state][max_action_idx];
   td_error = td_target - Q[curr_state][action];
   Q[curr_state][action]+= td_error*alpha;
+  ROS_INFO("last element: %f",phi_states[STATE_NUM_PHI-1]); 
   ROS_INFO("td error %f", td_error);
   ROS_INFO("td upate %f", Q[curr_state][action]);
   
   msg.max_action_idx = max_action_idx;
   msg.td_target = td_target;
-  msg.td_error = td_error;
-  msg.td_update = Q[curr_state][action];
+ msg.td_error = td_error;
+msg.td_update = Q[curr_state][action];
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
-
 }
 
 char reinforcement_learning::get_state(float pitch, float pitch_dot)
@@ -121,33 +124,33 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
   i = 0;
   j = 0;
 
-  for (char phi_idx = 0; phi_idx < STATE_NUM; phi_idx++)
+  for (char phi_idx = 0; phi_idx < STATE_NUM_PHI; phi_idx++)
   {
     if (pitch <= phi_states[phi_idx])
     {
       i = phi_idx;
       break;
-    }else if (pitch > phi_states[STATE_NUM - 1])
+    }else if (pitch > phi_states[STATE_NUM_PHI - 1])
     {
-      i = STATE_NUM;
+      i = STATE_NUM_PHI;
       break;
      }
    }
 
-  for (char phi_d_idx = 0; phi_d_idx < STATE_NUM; phi_d_idx++)
+  for (char phi_d_idx = 0; phi_d_idx < STATE_NUM_PHI_D; phi_d_idx++)
   {
     if (pitch_dot <= phi_d_states[phi_d_idx])
     {
       j = phi_d_idx;
       break;
-    }else if (pitch_dot > phi_d_states[STATE_NUM - 1])
+    }else if (pitch_dot > phi_d_states[STATE_NUM_PHI_D - 1])
     {
-      j = STATE_NUM;
+      j = STATE_NUM_PHI_D;
       break;
     }
  }
  
-  return( j + (STATE_NUM + 1) * i);
+  return( j + (STATE_NUM_PHI_D + 1) * i);
 }
 
 
@@ -225,44 +228,56 @@ char q_learning::choose_action(char curr_state)
  // std::vector<int> max_value_idxs;
 
   random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
-  //ROS_INFO("random num: %f", random_num);
-
+  ROS_INFO("random num: %f", random_num);
+  msg.action_choice = random_num;
   
   if (random_num < epsilon)
   {
     //pick randomly
     random_choice = rand()%ACTIONS;
-    //ROS_INFO("random choice: %d", random_choice);
+    ROS_INFO("random action choice: %d", random_choice);
+    msg.random_action = random_choice;
     return random_choice;
   }
   else
   {
     //pick best
-    //ROS_INFO("picks best");
+    msg.random_action = 50;
+    ROS_INFO("picks best");
     this->q_row = Q[curr_state];
 
     max_q = *std::max_element(q_row.begin(), q_row.end());
-//    ROS_INFO("max_q: %f", max_q);    
+    ROS_INFO("max_q: %f", max_q);    
     for (int i = 0; i < q_row.size(); i++)
       {
         if (max_q == q_row[i])
           {
             max_value_idxs.push_back(i);     
+	    ROS_INFO("max indexs: %d", i);
 	  }
       }
+	std::cout<<"max value idx size:"<<max_value_idxs.size()<<std::endl;
+//    for (int  i = 0; i < max_value_idxs.size(); i++)
+  //  {
+//	ROS_INFO("max value idxs: %d", max_value_idxs[i]);
+ //   }
+
     if (max_value_idxs.size() == 1)
       {
 	action_choice = max_value_idxs[0];
 	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
         max_value_idxs.clear();
-	return max_value_idxs[0];
+	return action_choice;
       }
 	else if (max_value_idxs.size() > 1)
       { 
+	ROS_INFO("max_value_dx 0 is: %d", max_value_idxs[0]);
+	action_choice = max_value_idxs[0];
+	max_value_idxs.clear();
 //	ROS_INFO("random choice for repeated bests");
 //	ROS_INFO("size: %d", max_value_idxs.size());
-        action_choice = rand()%(max_value_idxs.size());
-	max_value_idxs.clear();
+//        action_choice = rand()%(max_value_idxs.size());
+//	max_value_idxs.clear();
 //	ROS_INFO("rnadom choice is: %d", action_choice);
         return action_choice;
       }
@@ -707,7 +722,7 @@ void GazeboRsvBalance::publishQstate()
     q_msg.state57[i] = controller.Q[57][i];
     q_msg.state58[i] = controller.Q[58][i];
     q_msg.state59[i] = controller.Q[59][i];
-    q_msg.state60[i] = controller.Q[60][i];
+    /*q_msg.state60[i] = controller.Q[60][i];
     q_msg.state61[i] = controller.Q[61][i];
     q_msg.state62[i] = controller.Q[62][i];
     q_msg.state63[i] = controller.Q[63][i];
@@ -747,7 +762,7 @@ void GazeboRsvBalance::publishQstate()
     q_msg.state97[i] = controller.Q[97][i];
     q_msg.state98[i] = controller.Q[98][i];
     q_msg.state99[i] = controller.Q[99][i];
-
+*/
  } 
 
 // publish important data
@@ -782,7 +797,7 @@ void GazeboRsvBalance::UpdateChild()
 
 
     pitch = this->imu_pitch_*(180/M_PI);
-      if (std::abs(pitch) > 10)
+      if (std::abs(pitch) > PITCH_THRESHOLD)
       {
 
 	this->restart_delta = parent_->GetWorld()->GetSimTime();
@@ -825,8 +840,8 @@ void GazeboRsvBalance::UpdateChild()
     {
      case BALANCE:
 
-       // apply control if segway is still in pitch range
-      if (std::abs(pitch) <= 10 && std::abs(pitch) >= 0)
+      // apply control if segway is still in pitch range
+      if (std::abs(pitch) <= PITCH_THRESHOLD && std::abs(pitch) >= 0)
       {
 	controller.pitch = pitch;
 	controller.msg.epsilon = controller.epsilon;
@@ -834,13 +849,18 @@ void GazeboRsvBalance::UpdateChild()
 	controller.msg.error = controller.pitch - 0;
 	controller.msg.prev_pitch = controller.prev_pitch;
 	ROS_INFO("pitch: %f", controller.pitch);
-	ROS_INFO("pitch dot: %f", controller.pitch_dot);
-  	controller.msg.pitch = controller.pitch;
+	ROS_INFO("pitch prev: %f", controller.prev_pitch);
+	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
+	
+ 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
+	controller.msg.pitch = controller.pitch;
 	controller.msg.pitch_dot = controller.pitch_dot;
 	state = controller.get_state(controller.pitch, controller.pitch_dot);
 	ROS_INFO("episode: %d", controller.episode_num);
 	ROS_INFO("time step: %d", controller.time_steps);	
 	ROS_INFO("state: %d", state);
+
+
 	if (controller.time_steps < 1)
 	{
    	  //get state value
@@ -854,15 +874,14 @@ void GazeboRsvBalance::UpdateChild()
 	  //take action
 	  this->joints_[LEFT]->SetForce(0,-controller.action);
 	  this->joints_[RIGHT]->SetForce(0, controller.action);
-	  controller.msg.current_state = controller.current_state;
-	//increment timestep
-//	controller.time_steps++;
-	controller.msg.action = controller.action;
-	controller.msg.action_idx = controller.action_idx;
+	
+          controller.msg.current_state = controller.current_state;
+      	  controller.msg.action = controller.action;
+	  controller.msg.action_idx = controller.action_idx;
 
-
-	this->state_publisher_.publish(controller.msg);
-
+	  this->state_publisher_.publish(controller.msg);
+	  controller.time_steps++;
+	  controller.prev_pitch = controller.pitch;
 
 
 	}else if (controller.time_steps >= 1)
@@ -871,7 +890,7 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.next_state = state;
 //	  controller.msg.next_state = controller.next_state;
 	  ROS_INFO("next state: %d", controller.next_state);
-
+	  controller.msg.next_state = controller.next_state;
 	  //get reward
 	  reward = controller.get_reward(controller.next_state);
 	  controller.msg.reward = reward;
@@ -881,7 +900,6 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.TD_update(controller.current_state, controller.action_idx, controller.next_state, reward);
 	  // publish Q(s,a) matrix
 	  this->publishQstate();	
-
     	  //cycle n repeat
 	  if(reward == 1000)
 	  {
@@ -912,9 +930,7 @@ void GazeboRsvBalance::UpdateChild()
 	// prev pitch
 	controller.prev_pitch = controller.pitch;
 
-	//move to that next state
-	controller.current_state = controller.next_state;
-	
+
 	// add data (state, action, action_idx,  to msg
 	controller.msg.current_state = controller.current_state;
 	controller.msg.action = controller.action;
@@ -923,17 +939,19 @@ void GazeboRsvBalance::UpdateChild()
 
 	this->state_publisher_.publish(controller.msg);
 
-
+	//move to that next state
+	controller.current_state = controller.next_state;
+	
 	//increment timestep
-//	controller.time_steps++;
+	controller.time_steps++;
 
 	}
 
 	// publish important data
-	controller.time_steps++;
+//	controller.time_steps++;
 
 	//decrease epsilon and alpha
-	if (controller.episode_num % 30 == 0 && controller.episode_num > 1)
+	if (controller.episode_num % 20 == 0 && controller.episode_num > 1)
 	{
 	  this->epsilon_delta = parent_->GetWorld()->GetSimTime();
 	  if (this->epsilon_delta - this->epsilon_delta_prev > 0.1)
