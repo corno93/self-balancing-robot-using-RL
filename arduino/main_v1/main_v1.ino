@@ -49,6 +49,10 @@ float voltage_m2;
 float amps_m1;
 float amps_m2;
 
+//DEBUGGING VARIABLES:
+unsigned long start = 0;
+unsigned long end_ = 0;
+
 //CALLBACK FROM /rpm_cmd TOPIC
 void rpm_cmdCb( const std_msgs::Int16& msg){
   digitalWrite(13, HIGH-digitalRead(13));   // blink the led
@@ -91,9 +95,12 @@ void loop()
 {
   //update rpm reference commands
   nh.spinOnce();
-  sprintf(log_msg, "rpm_cmd: %d", RPM_ref_m1);
+  //sprintf(log_msg, "rpm_cmd: %d", RPM_ref_m1);
+  //nh.loginfo(log_msg);
+  end_ = micros() - start;
+  sprintf(log_msg, "loop time is: %d", end_);
   nh.loginfo(log_msg);
-  
+  start = micros();
   arduino_msg.reference_rpm = RPM_ref_m1;
 
   
@@ -105,23 +112,25 @@ void loop()
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
         
         // get averaged ADC values for current in motor's armature
-//        for (int i = 0; i < 5; i++)
-//        {
-//          raw_value_m1 += analogRead(A15);  //analog read takes 100 microseconds (0.0001s)
-//          raw_value_m2 += analogRead(A14);
-//        }
-//        voltage_m1 = ((raw_value_m1 / 5) / 1023)*5000;
-//        voltage_m2 = ((raw_value_m2 / 5) / 1023)*5000;
-//        amps_m1 = ((voltage_m1 - 2500)/185);
-//        amps_m2 = ((voltage_m2 - 2500)/185);
-//        raw_value_m1 = 0;
-//        raw_value_m2 = 0;  
-//        arduino_msg.voltage_1 = voltage_m1;
-//        arduino_msg.voltage_2 = voltage_m2;
-//        arduino_msg.current_1 = amps_m1;
-//        arduino_msg.current_2 = amps_m2;
-//        arduino_msg.torque_1 = amps_m1 * KT;
-//        arduino_msg.torque_2 = amps_m2 * KT;
+        for (int i = 0; i < 5; i++)
+        {
+          raw_value_m1 += analogRead(A15);  //analog read takes 100 microseconds (0.0001s)
+          raw_value_m2 += analogRead(A14);
+        }
+        voltage_m1 = ((raw_value_m1 / 5) / 1023)*5000;
+        voltage_m2 = ((raw_value_m2 / 5) / 1023)*5000;
+        amps_m1 = ((voltage_m1 - 2500)/185);
+        amps_m2 = ((voltage_m2 - 2500)/185);
+        raw_value_m1 = 0;
+        raw_value_m2 = 0;  
+        arduino_msg.voltage_1 = voltage_m1;
+        arduino_msg.voltage_2 = voltage_m2;
+        arduino_msg.current_1 = amps_m1;
+        arduino_msg.current_2 = amps_m2;
+        arduino_msg.torque_1 = amps_m1 * KT;
+        arduino_msg.torque_2 = amps_m2 * KT;
+//        sprintf(log_msg, "current 1: %f", (amps_m1));
+//        nh.loginfo(log_msg);
         
         // publish arduino data
         arduino_chatter.publish( &arduino_msg );

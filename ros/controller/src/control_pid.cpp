@@ -141,7 +141,7 @@ void Controller::write_serial_command(std::string const& command)
 
 void Controller::pitch_tolerance()
 {
-	if (pitch > -3.0 && pitch < 3.0)
+	if (std::abs(pitch) < 0.5)
 	{
 		pitch = 0.0;
 	}
@@ -213,12 +213,12 @@ float PID::updatePID()
 
 int PID::saturate(int pid_cmd)
 {
-	if (pid_cmd > 200)
+	if (pid_cmd >= 255)
 	{
-		pid_cmd = 200;
-	}else if (pid_cmd < -200)
+		pid_cmd = 255;
+	}else if (pid_cmd <= 1)
 	{
-		pid_cmd = -200;
+		pid_cmd = 1;
 	}
 	return pid_cmd;
 }
@@ -232,12 +232,12 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(FREQUENCY); 
 
 	ros::Publisher pid_data = n.advertise<controller::PidData>("/pid_data", 1000);
-	ros::Publisher rpm_command = n.advertise<std_msgs::Int16>("/rpm_cmd", 1000);
+	ros::Publisher pwm_command = n.advertise<std_msgs::Int16>("/pwm_cmd", 1000);
 
 	PID pid(6.5,0.0,0.15);
 
 	std::string command;
-        std_msgs::Int16 rpm_msg;
+        std_msgs::Int16 pwm_msg;
 	
 	int pid_cmd;
 
@@ -252,14 +252,15 @@ int main(int argc, char **argv)
 		pid.pitch_tolerance();
 		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
 
-		pid_cmd = static_cast<int>(round(pid.updatePID()));
+	//	pid_cmd = static_cast<int>(round(pid.updatePID()))/256 + 128;
+		pid_cmd = pid.updatePID() + 128;
 		pid_cmd = pid.saturate(pid_cmd);
 		//ROS_INFO("pid cmd: %d", pid_cmd);
 	
 	//	command = pid.motor_cmd_generator(pid_cmd);
 	//	std::cout<<"motor cmd: "<<command<<std::endl;
-		rpm_msg.data = pid_cmd;
-		rpm_command.publish(rpm_msg);
+		pwm_msg.data = pid_cmd;
+		pwm_command.publish(pwm_msg);
 	//	pid.write_serial_command(command);
 		test_counter++;
 
