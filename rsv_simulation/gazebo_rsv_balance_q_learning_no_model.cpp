@@ -22,12 +22,13 @@
 #include <cmath>
 #include <algorithm>
 
+#define REFERENCE_PITCH 0
 #define PITCH_THRESHOLD 3.5
 #define RL_DELTA 0.04
 #define FREQ 25
-#define ACTIONS 5
+#define ACTIONS 7
 //char actions[ACTIONS] = {-30,-10,0,10,30};
-char actions[ACTIONS] = {-3, -1, 0, 1, 3};	//torque of 3 recovers falling robot at 3 degreees
+char actions[ACTIONS] = {-50, -30, -10, 0, 10, 30, 50};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 100
 
@@ -99,21 +100,19 @@ void reinforcement_learning::TD_update(char curr_state, char action, char next_s
   float td_target;
   float td_error;
   float Q_val;
-  double Q_val_updated;
-
-  //next_state_idx = get_state_index(next_state);
+  
+  // get index value of Q next_state row with max reward value
   max_action_idx = distance(Q[next_state].begin(), max_element(Q[next_state].begin(), Q[next_state].end()));
+  // compute update and write to Q at current state
   td_target = reward + discount_factor*Q[next_state][max_action_idx];
   td_error = td_target - Q[curr_state][action];
   Q[curr_state][action]+= td_error*alpha;
-  ROS_INFO("last element: %f",phi_states[STATE_NUM_PHI-1]); 
-  ROS_INFO("td error %f", td_error);
-  ROS_INFO("td upate %f", Q[curr_state][action]);
-  
+ 
+  // add more data 
   msg.max_action_idx = max_action_idx;
   msg.td_target = td_target;
- msg.td_error = td_error;
-msg.td_update = Q[curr_state][action];
+  msg.td_error = td_error;
+  msg.td_update = Q[curr_state][action];
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
 }
@@ -224,9 +223,8 @@ char q_learning::choose_action(char curr_state)
   float random_num;
   float max_q;
   int action_choice;
- // std::vector<float> q_row;
- // std::vector<int> max_value_idxs;
 
+  // generate random number to decide whether to explore or exploit
   random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
   ROS_INFO("random num: %f", random_num);
   msg.action_choice = random_num;
@@ -253,14 +251,8 @@ char q_learning::choose_action(char curr_state)
         if (max_q == q_row[i])
           {
             max_value_idxs.push_back(i);     
-	    ROS_INFO("max indexs: %d", i);
 	  }
       }
-	std::cout<<"max value idx size:"<<max_value_idxs.size()<<std::endl;
-//    for (int  i = 0; i < max_value_idxs.size(); i++)
-  //  {
-//	ROS_INFO("max value idxs: %d", max_value_idxs[i]);
- //   }
 
     if (max_value_idxs.size() == 1)
       {
@@ -660,7 +652,7 @@ void GazeboRsvBalance::publishQstate()
 {
   rsv_balance_msgs::Q_state q_msg;
   ros::Time current_time = ros::Time::now();
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < ACTIONS; i++)
   {
     q_msg.state0[i] = controller.Q[0][i];
     q_msg.state1[i] = controller.Q[1][i];
@@ -722,7 +714,7 @@ void GazeboRsvBalance::publishQstate()
     q_msg.state57[i] = controller.Q[57][i];
     q_msg.state58[i] = controller.Q[58][i];
     q_msg.state59[i] = controller.Q[59][i];
-    /*q_msg.state60[i] = controller.Q[60][i];
+    q_msg.state60[i] = controller.Q[60][i];
     q_msg.state61[i] = controller.Q[61][i];
     q_msg.state62[i] = controller.Q[62][i];
     q_msg.state63[i] = controller.Q[63][i];
@@ -762,9 +754,29 @@ void GazeboRsvBalance::publishQstate()
     q_msg.state97[i] = controller.Q[97][i];
     q_msg.state98[i] = controller.Q[98][i];
     q_msg.state99[i] = controller.Q[99][i];
-*/
- } 
+    q_msg.state100[i] = controller.Q[100][i];
+    q_msg.state101[i] = controller.Q[101][i];
+    q_msg.state102[i] = controller.Q[102][i];
+    q_msg.state103[i] = controller.Q[103][i];
+    q_msg.state104[i] = controller.Q[104][i];
+    q_msg.state105[i] = controller.Q[105][i];
+    q_msg.state106[i] = controller.Q[106][i];
+    q_msg.state107[i] = controller.Q[107][i];
+    q_msg.state108[i] = controller.Q[108][i];
+    q_msg.state109[i] = controller.Q[109][i];
+    q_msg.state110[i] = controller.Q[110][i];
+    q_msg.state111[i] = controller.Q[111][i];
+    q_msg.state112[i] = controller.Q[112][i];
+    q_msg.state113[i] = controller.Q[113][i];
+    q_msg.state114[i] = controller.Q[114][i];
+    q_msg.state115[i] = controller.Q[115][i];
+    q_msg.state116[i] = controller.Q[116][i];
+    q_msg.state117[i] = controller.Q[117][i];
+    q_msg.state118[i] = controller.Q[118][i];
+    q_msg.state119[i] = controller.Q[119][i];
 
+
+ } 
 // publish important data
   this->Q_state_publisher_.publish(q_msg);
 
@@ -790,23 +802,24 @@ void GazeboRsvBalance::UpdateChild()
   float next_pitch;
   float next_pitch_dot;
 
-    this->updateIMU();
-    this->updateOdometry();
-    this->publishOdometry();
-    this->publishWheelJointState();
+  this->updateIMU();
+  this->updateOdometry();
+  this->publishOdometry();
+  this->publishWheelJointState();
 
 
-    pitch = this->imu_pitch_*(180/M_PI);
-      if (std::abs(pitch) > PITCH_THRESHOLD)
-      {
-
-	this->restart_delta = parent_->GetWorld()->GetSimTime();
-	if (this->restart_delta - this->restart_delta_prev > 0.1)
+  pitch = this->imu_pitch_*(180/M_PI);
+  if (std::abs(pitch) > PITCH_THRESHOLD)
+    {
+      this->restart_delta = parent_->GetWorld()->GetSimTime();
+      if (this->restart_delta - this->restart_delta_prev > 0.1)
 	{
 
 	  ROS_INFO("RESTART SIM - pitch is: %f!", this->imu_pitch_*(180/M_PI));
 	  controller.episode_num++;
           controller.msg.episodes = controller.episode_num;
+	  
+	  //initalise appropriate variables
 	  controller.time_steps = 0;
 	  controller.prev_pitch = 0;
 	  controller.pitch_dot = 0;
@@ -841,29 +854,35 @@ void GazeboRsvBalance::UpdateChild()
      case BALANCE:
 
       // apply control if segway is still in pitch range
-      if (std::abs(pitch) <= PITCH_THRESHOLD && std::abs(pitch) >= 0)
+      if (std::abs(pitch) <= PITCH_THRESHOLD)
       {
+	// class member variables
 	controller.pitch = pitch;
-	controller.msg.epsilon = controller.epsilon;
-	controller.msg.time_steps = controller.time_steps;
-	controller.msg.error = controller.pitch - 0;
-	controller.msg.prev_pitch = controller.prev_pitch;
-	ROS_INFO("pitch: %f", controller.pitch);
-	ROS_INFO("pitch prev: %f", controller.prev_pitch);
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
-	
- 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
+
+	// message member variables
 	controller.msg.pitch = controller.pitch;
 	controller.msg.pitch_dot = controller.pitch_dot;
+	controller.msg.epsilon = controller.epsilon;
+	controller.msg.time_steps = controller.time_steps;
+	controller.msg.error = controller.pitch - REFERENCE_PITCH;
+	controller.msg.prev_pitch = controller.prev_pitch;
+	
+	// get state of the system
 	state = controller.get_state(controller.pitch, controller.pitch_dot);
+
+	// debugging data:	
 	ROS_INFO("episode: %d", controller.episode_num);
 	ROS_INFO("time step: %d", controller.time_steps);	
+	ROS_INFO("pitch: %f", controller.pitch);
+	ROS_INFO("pitch prev: %f", controller.prev_pitch);
+ 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
 	ROS_INFO("state: %d", state);
 
-
+	// first iteration
 	if (controller.time_steps < 1)
 	{
-   	  //get state value
+   	  // set the current state
   	  controller.current_state = state;
 	  ROS_INFO("current state: %d", controller.current_state);
 
@@ -871,86 +890,58 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.action_idx = controller.choose_action(controller.current_state);
 	  controller.action = actions[controller.action_idx];
 	  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
+	 
 	  //take action
 	  this->joints_[LEFT]->SetForce(0,-controller.action);
 	  this->joints_[RIGHT]->SetForce(0, controller.action);
-	
-          controller.msg.current_state = controller.current_state;
-      	  controller.msg.action = controller.action;
-	  controller.msg.action_idx = controller.action_idx;
-
-	  this->state_publisher_.publish(controller.msg);
-	  controller.time_steps++;
-	  controller.prev_pitch = controller.pitch;
 
 
 	}else if (controller.time_steps >= 1)
 	{
-   	  //get next state value
+   	  // set the  next state 
 	  controller.next_state = state;
-//	  controller.msg.next_state = controller.next_state;
-	  ROS_INFO("next state: %d", controller.next_state);
 	  controller.msg.next_state = controller.next_state;
-	  //get reward
+	  ROS_INFO("next state: %d", controller.next_state);
+	  
+	  // get reward
 	  reward = controller.get_reward(controller.next_state);
 	  controller.msg.reward = reward;
 	  ROS_INFO("reward is %f", reward);	
 
 	  //TD update
 	  controller.TD_update(controller.current_state, controller.action_idx, controller.next_state, reward);
+	  
 	  // publish Q(s,a) matrix
 	  this->publishQstate();	
-    	  //cycle n repeat
-	  if(reward == 1000)
-	  {
-		controller.wins++;
-		controller.msg.wins = controller.wins;
-	  }
-	  else if (reward == -100)
-	  {
-		controller.loses++;
-		controller.msg.loses = controller.loses;
-	  }
-	 
-	 
+	  // publish state data
+  	  this->state_publisher_.publish(controller.msg);
+	
+	  // Now move from the next state to the current state
+    	  controller.current_state = controller.next_state;
+ 
 	  // select action
 	  controller.action_idx = controller.choose_action(controller.current_state);
 	  controller.action = actions[controller.action_idx];
 	  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
 	  
-	  //take action
+	  // take action
 	  this->joints_[LEFT]->SetForce(0,-controller.action);
 	  this->joints_[RIGHT]->SetForce(0, controller.action);
 
-  
-	//pitch dot/a
-	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
-//	controller.msg.pitch_dot = controller.pitch_dot;
-
-	// prev pitch
+ 	}
+ 
+	// set prev pitch
 	controller.prev_pitch = controller.pitch;
 
-
-	// add data (state, action, action_idx,  to msg
+	// add data to message (state, action, action_idx,  to msg
 	controller.msg.current_state = controller.current_state;
 	controller.msg.action = controller.action;
 	controller.msg.action_idx = controller.action_idx;
 
-
-	this->state_publisher_.publish(controller.msg);
-
-	//move to that next state
-	controller.current_state = controller.next_state;
-	
 	//increment timestep
 	controller.time_steps++;
 
-	}
-
-	// publish important data
-//	controller.time_steps++;
-
-	//decrease epsilon and alpha
+	//decrease epsilon every 20 eps
 	if (controller.episode_num % 20 == 0 && controller.episode_num > 1)
 	{
 	  this->epsilon_delta = parent_->GetWorld()->GetSimTime();
