@@ -22,25 +22,18 @@
 #include <cmath>
 #include <algorithm>
 
-#define RL_DELTA 0.01
-#define FREQ 20
+#define RL_DELTA 0.02
+#define FREQ 50
 #define ACTIONS 5
 char actions[ACTIONS] = {-30,-10,0,10,30};
  
 #define WHEEL_RADIUS 0.19
+#define MAX_EPISODE 100
 
 // 2D state space
-#define STATE_NUM 7
-#define REWARD_1 4
-#define REWARD_2 12
-#define REWARD_3 20
-#define REWARD_4 28
-char phi_states[STATE_NUM] = {-3, -2, -1, 0, 1, 2, 3};
-char phi_d_states[STATE_NUM] = {-20, -10,-5, 0, 5, 10, 20};
-char reward_1[4] = {44, 45, 54, 55};
-char reward_2[12] = {33, 34, 35, 36, 43, 46, 53, 56, 63, 64, 65, 66};
-char reward_3[20] = {22, 23, 24, 25, 26, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72,73,74,75,76,77};
-char reward_4[28] = {11,12,13,14,15,16,17,18,21,28,31,38,41,48,51,58,61,68,71,78,81,82,83,84,85,86,87,88};
+#define STATE_NUM 9
+float phi_states[STATE_NUM] = {-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3};
+float phi_d_states[STATE_NUM] = {-30, -20, -10,-5, 0, 5, 10, 20, 30};
 
 
 class reinforcement_learning
@@ -88,37 +81,9 @@ reinforcement_learning::~reinforcement_learning()
 
 float reinforcement_learning::get_reward(char next_state)
 {
-  float squared_error = -pow((pitch - 0),2);
-  return squared_error; 
-  /*for (int i = 0; i < REWARD_1; i++)
-  {
-    if (next_state == reward_1[i])
-    {
-      return 1000;
-    }
-  }
-  for (int i = 0; i < REWARD_2; i++)
-  {
-    if (next_state == reward_2[i])
-    {
-    return 500;
-    }
-  }
-  for (int i = 0; i < REWARD_3; i++)
-  {
-  if (next_state == reward_3[i])
-    {
-      return 100;
-    }
-  }
-  for (int i = 0; i < REWARD_4; i++)
-  {
-  if (next_state == reward_4[i])
-    {
-      return 10;
-    }
-  }
-  return -100;*/
+  float squared_error_pitch = -pow((pitch - 0),2);
+  float squared_error_pitch_dot = -pow((pitch_dot - 0), 2);
+  return squared_error_pitch + squared_error_pitch_dot; 
 }
 
 char reinforcement_learning::choose_action(char)
@@ -137,22 +102,16 @@ void reinforcement_learning::TD_update(char curr_state, char action, char next_s
   max_action_idx = distance(Q[next_state].begin(), max_element(Q[next_state].begin(), Q[next_state].end()));
   td_target = reward + discount_factor*Q[next_state][max_action_idx];
   td_error = td_target - Q[curr_state][action];
-  Q_val = Q[curr_state][action];
-  ROS_INFO("Qsa before update: %f", Q_val);
   Q[curr_state][action]+= td_error*alpha;
   ROS_INFO("td error %f", td_error);
-  ROS_INFO("alpha %f", alpha);
   ROS_INFO("td upate %f", Q[curr_state][action]);
-  Q_val_updated = Q_val + td_error*alpha;
-  ROS_INFO("q val upadted %f", Q_val_updated);  
-  ROS_INFO("upadted Q table ! %f", Q[curr_state][action]);
+  
   msg.max_action_idx = max_action_idx;
   msg.td_target = td_target;
   msg.td_error = td_error;
   msg.td_update = Q[curr_state][action];
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
-  msg.td_update_test = 1000;
 
 }
 
@@ -752,7 +711,42 @@ void GazeboRsvBalance::publishQstate()
     q_msg.state61[i] = controller.Q[61][i];
     q_msg.state62[i] = controller.Q[62][i];
     q_msg.state63[i] = controller.Q[63][i];
-
+    q_msg.state64[i] = controller.Q[64][i];
+    q_msg.state65[i] = controller.Q[65][i];
+    q_msg.state66[i] = controller.Q[66][i];
+    q_msg.state67[i] = controller.Q[67][i];
+    q_msg.state68[i] = controller.Q[68][i];
+    q_msg.state69[i] = controller.Q[69][i];
+    q_msg.state70[i] = controller.Q[70][i];
+    q_msg.state71[i] = controller.Q[71][i];
+    q_msg.state72[i] = controller.Q[72][i];
+    q_msg.state73[i] = controller.Q[73][i];
+    q_msg.state74[i] = controller.Q[74][i];
+    q_msg.state75[i] = controller.Q[75][i];
+    q_msg.state76[i] = controller.Q[76][i];
+    q_msg.state77[i] = controller.Q[77][i];
+    q_msg.state78[i] = controller.Q[78][i];
+    q_msg.state79[i] = controller.Q[79][i];
+    q_msg.state80[i] = controller.Q[80][i];
+    q_msg.state81[i] = controller.Q[81][i];
+    q_msg.state82[i] = controller.Q[82][i];
+    q_msg.state83[i] = controller.Q[83][i];
+    q_msg.state84[i] = controller.Q[84][i];
+    q_msg.state85[i] = controller.Q[85][i];
+    q_msg.state86[i] = controller.Q[86][i];
+    q_msg.state87[i] = controller.Q[87][i];
+    q_msg.state88[i] = controller.Q[88][i];
+    q_msg.state89[i] = controller.Q[89][i];
+    q_msg.state90[i] = controller.Q[90][i];
+    q_msg.state91[i] = controller.Q[91][i];
+    q_msg.state92[i] = controller.Q[92][i];
+    q_msg.state93[i] = controller.Q[93][i];
+    q_msg.state94[i] = controller.Q[94][i];
+    q_msg.state95[i] = controller.Q[95][i];
+    q_msg.state96[i] = controller.Q[96][i];
+    q_msg.state97[i] = controller.Q[97][i];
+    q_msg.state98[i] = controller.Q[98][i];
+    q_msg.state99[i] = controller.Q[99][i];
 
  } 
 
@@ -835,6 +829,7 @@ void GazeboRsvBalance::UpdateChild()
       if (std::abs(pitch) <= 10 && std::abs(pitch) >= 0)
       {
 	controller.pitch = pitch;
+	controller.msg.epsilon = controller.epsilon;
 	controller.msg.time_steps = controller.time_steps;
 	controller.msg.error = controller.pitch - 0;
 	controller.msg.prev_pitch = controller.prev_pitch;
@@ -940,8 +935,14 @@ void GazeboRsvBalance::UpdateChild()
 	//decrease epsilon and alpha
 	if (controller.episode_num % 30 == 0 && controller.episode_num > 1)
 	{
-	  ROS_INFO("DECREASE PARAMS");
-	  controller.epsilon = controller.epsilon/2;
+	  this->epsilon_delta = parent_->GetWorld()->GetSimTime();
+	  if (this->epsilon_delta - this->epsilon_delta_prev > 0.1)
+	  {
+	    ROS_INFO("DECREASE PARAMS");
+	    controller.epsilon = controller.epsilon/2;
+	    controller.msg.epsilon = controller.epsilon;
+	  }
+	  this->epsilon_delta_prev = epsilon_delta;
 	}
 
       }	
