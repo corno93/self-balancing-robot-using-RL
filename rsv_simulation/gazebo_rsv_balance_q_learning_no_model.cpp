@@ -22,15 +22,15 @@
 #include <cmath>
 #include <algorithm>
 
-#define REFERENCE_PITCH 0
+#define REFERENCE_PITCH 2.3
 #define PITCH_THRESHOLD 3.5
 #define RL_DELTA 0.04
 #define FREQ 25
 #define ACTIONS 7
 //char actions[ACTIONS] = {-30,-10,0,10,30};
-char actions[ACTIONS] = {-50, -30, -10, 0, 10, 30, 50};	//torque of 3 recovers falling robot at 3 degreees
+char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
-#define MAX_EPISODE 100
+#define MAX_EPISODE 50
 
 // 2D state space
 #define STATE_NUM_PHI 9
@@ -75,7 +75,7 @@ reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
-     epsilon(0.4), pitch_dot(0.0), prev_pitch(0.0)
+     epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0)
 {
 }
 
@@ -85,7 +85,7 @@ reinforcement_learning::~reinforcement_learning()
 
 float reinforcement_learning::get_reward(char next_state)
 {
-  float squared_error_pitch = -pow((pitch - 0),2);
+  float squared_error_pitch = -pow((pitch - REFERENCE_PITCH),2);
   float squared_error_pitch_dot = -pow((pitch_dot - 0), 2);
   return squared_error_pitch + squared_error_pitch_dot; 
 }
@@ -942,7 +942,7 @@ void GazeboRsvBalance::UpdateChild()
 	controller.time_steps++;
 
 	//decrease epsilon every 20 eps
-	if (controller.episode_num % 20 == 0 && controller.episode_num > 1)
+	if (controller.episode_num % 15 == 0 && controller.episode_num > 1)
 	{
 	  this->epsilon_delta = parent_->GetWorld()->GetSimTime();
 	  if (this->epsilon_delta - this->epsilon_delta_prev > 0.1)
@@ -952,6 +952,12 @@ void GazeboRsvBalance::UpdateChild()
 	    controller.msg.epsilon = controller.epsilon;
 	  }
 	  this->epsilon_delta_prev = epsilon_delta;
+	}
+
+	if (controller.episode_num == MAX_EPISODE)
+	{
+	  ROS_INFO("SIMULATION COMPLETE AT %d EPISODES", controller.episode_num);
+	  while(1){}
 	}
 
       }	
