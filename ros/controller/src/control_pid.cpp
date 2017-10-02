@@ -13,12 +13,16 @@
 #include "controller/PidData.h"
 #include <std_msgs/Int16.h>
 
-#define FREQUENCY 50
-#define PID_DELTA 0.02
+#define FREQUENCY 100
+#define PID_DELTA 0.01
 #define BAUD_RATE 115200
 
+#define PROP_GAIN 6
+#define INT_GAIN 0.2
+#define DERIV_GAIN 0.5
 
-int test_counter = 0;
+#define STOP_PWM 130
+
 
 namespace patch
 {
@@ -189,7 +193,7 @@ void PID::init()
 
 float PID::updatePID()
 {
-	float error, error_kp, error_ki, error_kd, derivative;
+	float error, error_kp, error_ki, error_kd, derivative, pid_cmd;
 	
 	error = pitch - pitch_ref;//pitch_ref - pitch;
 	msg.error = error;
@@ -208,7 +212,9 @@ float PID::updatePID()
 	msg.error_derivative = error_kd;
 	error_prev = error;
 	
-	return (error_kp + error_ki + error_kd);
+	pid_cmd = (error_kp + error_ki + error_kd);
+	msg.pid_cmd = pid_cmd;	
+	return pid_cmd;
 }
 
 int PID::saturate(int pid_cmd)
@@ -234,7 +240,7 @@ int main(int argc, char **argv)
 	ros::Publisher pid_data = n.advertise<controller::PidData>("/pid_data", 1000);
 	ros::Publisher pwm_command = n.advertise<std_msgs::Int16>("/pwm_cmd", 1000);
 
-	PID pid(6.5,0.0,0.15);
+	PID pid(PROP_GAIN,INT_GAIN,DERIV_GAIN);
 
 	std::string command;
         std_msgs::Int16 pwm_msg;
@@ -253,16 +259,15 @@ int main(int argc, char **argv)
 		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
 
 	//	pid_cmd = static_cast<int>(round(pid.updatePID()))/256 + 128;
-		pid_cmd = pid.updatePID() + 128;
+		pid_cmd = pid.updatePID() + STOP_PWM;
 		pid_cmd = pid.saturate(pid_cmd);
 		//ROS_INFO("pid cmd: %d", pid_cmd);
-	
+		pid.msg.motor_cmd = pid_cmd;	
 	//	command = pid.motor_cmd_generator(pid_cmd);
 	//	std::cout<<"motor cmd: "<<command<<std::endl;
 		pwm_msg.data = pid_cmd;
 		pwm_command.publish(pwm_msg);
 	//	pid.write_serial_command(command);
-		test_counter++;
 
 		pid_data.publish(pid.msg);
 
