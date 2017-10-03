@@ -13,6 +13,7 @@ if __name__ == '__main__':
 	try:
 	    term = raw_input("Enter term id: p, i or d: ")
 	    value = raw_input("Enter value: ")
+	    term = term.strip()
  	    if term == 'p':
 	  	    msg.p = float(value)
 	    elif term == 'i':
@@ -22,8 +23,9 @@ if __name__ == '__main__':
 	    else:
 		print "incorrect entered variable.."
 
-	except:
+	except KeyboardInterrupt:
 	   print "for fuck sake mate its not that hard..."
+	   break
 
 	print "You have selected %s at %s" % (term, value)
 	pub.publish(msg)

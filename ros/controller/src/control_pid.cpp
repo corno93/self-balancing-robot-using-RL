@@ -10,16 +10,19 @@
 #include <stdlib.h>
 #include <iostream>
 
+#include "robot_teleop_tuner/pid_values.h"
+
+
 #include "controller/PidData.h"
 #include <std_msgs/Int16.h>
 
-#define FREQUENCY 100
-#define PID_DELTA 0.01
+#define FREQUENCY 25
+#define PID_DELTA 0.04
 #define BAUD_RATE 115200
 
-#define PROP_GAIN 6
-#define INT_GAIN 0.2
-#define DERIV_GAIN 0.5
+#define PROP_GAIN 0
+#define INT_GAIN 0
+#define DERIV_GAIN 0
 
 #define STOP_PWM 130
 
@@ -50,7 +53,7 @@ class Controller
 
 		//ros stuff (subscribe to IMU data topic)	
   		ros::NodeHandle n;	//make private? eh..
-		ros::Subscriber sub;
+		ros::Subscriber sub_imu;
 		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
 		
 		//serialPutchar parameter
@@ -76,8 +79,7 @@ Controller::Controller()
 	    ,   time_steps(0)
 {
 	//Ros Init (subscribe to IMU topic)
-	sub = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
-	
+	sub_imu = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
 	//Serial Init
 /*	if ((fd = serialOpen("/dev/ttyACM0",BAUD_RATE))<0)
 	{
@@ -162,12 +164,14 @@ class PID : public Controller
 	float integral_sum;
 
 	controller::PidData msg;
-
+	ros::Subscriber sub_pid;
 	PID(float, float, float);
 	~PID();
 	float updatePID();
 	void init();
 	int saturate(int);
+	void pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input);
+	float saturateIntSum(float);
 };
 
 PID::PID(float kp_, float ki_, float kd_):
@@ -178,6 +182,15 @@ PID::PID(float kp_, float ki_, float kd_):
 	kd = kd_;
 	this->init();
 	ROS_INFO("pid instance created");
+	sub_pid = n.subscribe("/pid_tuner", 1000, &PID::pid_callback, this);
+	
+}
+
+void PID::pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input)
+{
+    kp = pid_input->p;
+    ki = pid_input->i;
+    kd = pid_input->d;
 }
 
 PID::~PID()
@@ -202,6 +215,7 @@ float PID::updatePID()
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
+	integral_sum = saturateIntSum(integral_sum);
 	error_ki = integral_sum * ki;
 	msg.integral_sum = integral_sum;
 	msg.error_integral = error_ki;
@@ -210,6 +224,7 @@ float PID::updatePID()
 	error_kd = derivative * kd;
 	msg.derivative = derivative;
 	msg.error_derivative = error_kd;
+	msg.error_prev = error_prev;
 	error_prev = error;
 	
 	pid_cmd = (error_kp + error_ki + error_kd);
@@ -229,7 +244,18 @@ int PID::saturate(int pid_cmd)
 	return pid_cmd;
 }
 
-
+float PID::saturateIntSum(float integral_sum)
+{
+	if (integral_sum > 50)
+	{
+	  integral_sum = 50;
+	}
+	else if (integral_sum < -50)
+	{
+	  integral_sum = -50;
+	}
+	return integral_sum;
+}
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "control");

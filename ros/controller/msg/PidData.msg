@@ -4,6 +4,7 @@ float64 error_integral
 float64 integral_sum
 float64 error_derivative
 float64 derivative
+float64 error_prev
 float64 pid_cmd
 int64 motor_cmd
 int64 episodes
