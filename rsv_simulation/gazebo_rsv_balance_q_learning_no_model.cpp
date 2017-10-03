@@ -22,7 +22,7 @@
 #include <cmath>
 #include <algorithm>
 
-#define REFERENCE_PITCH 2.3
+#define REFERENCE_PITCH 0.0
 #define PITCH_THRESHOLD 3.5
 #define RL_DELTA 0.04
 #define FREQ 25
@@ -58,6 +58,7 @@ class reinforcement_learning
     rsv_balance_msgs::State msg;
     char action;
     char action_idx;
+    float reward_per_ep;
 
     reinforcement_learning();
     ~reinforcement_learning();
@@ -75,7 +76,8 @@ reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
-     epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0)
+     epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0),
+     reward_per_ep(0.0)
 {
 }
 
@@ -85,9 +87,15 @@ reinforcement_learning::~reinforcement_learning()
 
 float reinforcement_learning::get_reward(char next_state)
 {
-  float squared_error_pitch = -pow((pitch - REFERENCE_PITCH),2);
-  float squared_error_pitch_dot = -pow((pitch_dot - 0), 2);
-  return squared_error_pitch + squared_error_pitch_dot; 
+  float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
+  float squared_error_pitch_dot = pow((pitch_dot - 0), 2);
+
+  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
+    squared_error_pitch_dot = -squared_error_pitch_dot;
+  else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
+    squared_error_pitch_dot = -squared_error_pitch_dot;
+  
+  return (-squared_error_pitch + squared_error_pitch_dot); 
 }
 
 char reinforcement_learning::choose_action(char)
@@ -823,7 +831,8 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.time_steps = 0;
 	  controller.prev_pitch = 0;
 	  controller.pitch_dot = 0;
-	  
+	  controller.reward_per_ep = 0;
+
 	  //clear message
 	  controller.msg.pitch = 0;
 	  controller.msg.pitch_dot = 0;
@@ -834,7 +843,6 @@ void GazeboRsvBalance::UpdateChild()
 	  controller.msg.td_update = 0;
 	  controller.msg.td_target = 0;
 	  controller.msg.td_error = 0;
-	  
 	}
 	this->restart_delta_prev = this->restart_delta;
 	
@@ -907,6 +915,9 @@ void GazeboRsvBalance::UpdateChild()
 	  reward = controller.get_reward(controller.next_state);
 	  controller.msg.reward = reward;
 	  ROS_INFO("reward is %f", reward);	
+
+	  controller.reward_per_ep+=reward;
+	  controller.msg.reward_per_ep = controller.reward_per_ep;
 
 	  //TD update
 	  controller.TD_update(controller.current_state, controller.action_idx, controller.next_state, reward);
