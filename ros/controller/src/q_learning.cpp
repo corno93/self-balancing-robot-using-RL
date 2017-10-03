@@ -21,21 +21,20 @@
 #include <cmath>
 #include <algorithm>
 
-#define FREQUENCY 25
-#define RL_DELTA 0.04
-
+#define FREQUENCY 10
+#define RL_DELTA 0.1
 #define STOP_PWM 130
 
 #define PITCH_FIX 0
 
 #define REFERENCE_PITCH 0.0
 #define PITCH_THRESHOLD 3.5
-#define RL_DELTA 0.04
-#define FREQ 25
 #define ACTIONS 7
 
-//char actions[ACTIONS] = {-30,-10,0,10,30};
-int actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
+
+//The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
+int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
+
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 50
 
