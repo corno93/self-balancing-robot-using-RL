@@ -35,7 +35,7 @@
 #define ACTIONS 7
 
 //char actions[ACTIONS] = {-30,-10,0,10,30};
-char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
+int actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 50
 
@@ -135,7 +135,7 @@ class reinforcement_learning
     char current_state;
     char next_state;
     controller::State msg;
-    char action;
+    int action;
     char action_idx;
     float reward_per_ep;
     ros::NodeHandle n;	//make private? eh..
@@ -148,7 +148,7 @@ class reinforcement_learning
 
 
     char virtual choose_action(char) = 0;
-    void TD_update(char, char, char, float);
+    void TD_update(char, int, char, float);
     char get_state(float, float);
     //char get_next_state(float,float, char);
     float get_reward(float);
@@ -188,7 +188,7 @@ char reinforcement_learning::choose_action(char)
 {
 }
 
-void reinforcement_learning::TD_update(char curr_state, char action, char next_state, float reward)
+void reinforcement_learning::TD_update(char curr_state, int action, char next_state, float reward)
 {
   int max_action_idx;
   float td_target;
@@ -593,6 +593,7 @@ int main(int argc, char **argv)
 			  controller.action_idx = controller.choose_action(controller.current_state);
 			  controller.action = actions[controller.action_idx];
 			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
+			  ROS_INFO("action idx %d and int action: %d", controller.action_idx, int(controller.action));	
 			  
 			  // take action (ie. publish action)
 			  pwm_msg.data = controller.action;
