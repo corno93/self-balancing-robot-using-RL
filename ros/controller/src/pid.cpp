@@ -26,6 +26,8 @@
 
 #define STOP_PWM 130
 
+#define PITCH_FIX 0
+#define REFERENCE_PITCH 0
 
 namespace patch
 {
@@ -106,7 +108,7 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	//double roll, pitch, yaw;
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
-	pitch = pitch*(180/M_PI);
+	pitch = pitch*(180/M_PI) + PITCH_FIX;
 }		
 
 std::string Controller::motor_cmd_generator(int cmd)
@@ -172,6 +174,7 @@ class PID : public Controller
 	int saturate(int);
 	void pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input);
 	float saturateIntSum(float);
+	void checkReset(void);
 };
 
 PID::PID(float kp_, float ki_, float kd_):
@@ -204,11 +207,20 @@ void PID::init()
 	integral_sum = 0;
 }
 
+
+void PID::checkReset()
+{
+	if (std::abs(pitch) < 0.3)
+	{
+	  this->init();
+	}
+}
+
 float PID::updatePID()
 {
 	float error, error_kp, error_ki, error_kd, derivative, pid_cmd;
 	
-	error = pitch - pitch_ref;//pitch_ref - pitch;
+	error = pitch - REFERENCE_PITCH;//pitch_ref;//pitch_ref - pitch;
 	msg.error = error;
 
 	error_kp = error * kp;
@@ -281,8 +293,9 @@ int main(int argc, char **argv)
 		pid.msg.time_steps = pid.time_steps;
 
 		ROS_INFO("%f", pid.pitch);
-		pid.pitch_tolerance();
+		//pid.pitch_tolerance();
 		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
+		pid.checkReset();
 
 	//	pid_cmd = static_cast<int>(round(pid.updatePID()))/256 + 128;
 		pid_cmd = pid.updatePID() + STOP_PWM;
