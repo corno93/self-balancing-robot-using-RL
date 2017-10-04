@@ -55,6 +55,8 @@ message(${wiringPi})
  add_message_files(
    FILES
    PidData.msg
+   State.msg
+   Q_state.msg
 )
 
 
