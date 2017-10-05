@@ -7,7 +7,7 @@
 #include <rl/reinforcement_learning.h>
 #include <rl/q_learning.h>
 
-#define MAX_EPISODE 5000
+#define MAX_EPISODE 100
 
 using namespace std;
 
@@ -28,9 +28,10 @@ int main()
     srand(time(NULL));//seed the randomizer
 
     // rl variables (put in controller?)
-    discount_factor = 0.3;
-    alpha = 0.3;
-    epsilon = 0.3;
+    discount_factor = 0.9;
+    alpha = 0.9;
+    epsilon = 0.6;
+
 
     wins = 0;
     loses = 0;
@@ -55,10 +56,10 @@ int main()
             action = controller.choose_action(epsilon, available_actions, q_row);
 
             //take action
-            next_state = env.take_action(action, current_state);
+            //next_state = env.take_action(action, current_state);
 
             //get next state. incorporates transition probs.
-            //next_state = env.next_state(action, current_state, available_actions);
+            next_state = env.next_state(action, current_state, available_actions);
 
             //get reward
             reward = env.get_reward(next_state);
@@ -69,7 +70,10 @@ int main()
             td_target = reward + discount_factor*env.Q[next_state_idx][max_action_idx];
             td_error = td_target - env.Q[current_state_idx][action];
             env.Q[current_state_idx][action]+= td_error*alpha;
-
+            if  (time_step > 15 && episode > 70)
+            {
+                int hey = 0;
+            }
             if (reward == 1000)
             {
                 wins++;
@@ -86,26 +90,33 @@ int main()
                 current_state = next_state;
             }
         }
-        if (episode % 10 == 0 && episode > 1)
+
+
+
+        if (episode % 1 == 0)
         {
             //print stats
-            cout<<"-------------------------------------------"<<endl;
+        /*    cout<<"-------------------------------------------"<<endl;
             cout<<"Episode number: "<<episode<<" | ";
             cout<<"Time step: "<<time_step<<" | ";
             cout<<"Wins: "<<wins<<" | ";
             cout<<"Loses: "<<loses<<" | ";
-            cout<<"Epsilon: "<<epsilon<<endl;
+            cout<<"Epsilon: "<<epsilon<<endl;*/
+            cout<<episode<<","<<time_step<<","<<wins<<","<<loses<<","<<epsilon<<endl;
+
+
         }
         //reduce exploration over time and when wins continually increase
-        if (episode % 30 == 0 && wins > wins_prev*1.75)
+        if (episode % 10 == 0 && episode > 1)
         {
             if (epsilon > 0.06)//because c++ and floats are gay
             {
-                epsilon-=0.05;
+                epsilon-=0.2;
             }
-            else
+            if (epsilon < 0)
             {
-                epsilon = 0;
+                epsilon = 0.0;
+
             }
         }
     }

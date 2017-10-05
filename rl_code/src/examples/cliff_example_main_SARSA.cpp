@@ -7,7 +7,7 @@
 #include <rl/reinforcement_learning.h>
 #include <rl/sarsa.h>
 
-#define MAX_EPISODE 5000
+#define MAX_EPISODE 100
 
 using namespace std;
 
@@ -31,7 +31,7 @@ int main()
     // rl variables (put in controller?)
     discount_factor = 0.3;
     alpha = 0.3;
-    epsilon = 0.3;
+    epsilon = 0.5;
 
     wins = 0;
     loses = 0;
@@ -95,19 +95,25 @@ int main()
                 current_state_idx = env.get_state_index(current_state);
                 action = next_action;
             }
+
+            if (episode > 15)
+                   {
+                    int hey = 0;
+                    }
         }
-        if (episode % 10 == 0 && episode > 1)
+        if (episode % 1 == 0 && episode > 1)
         {
             //print stats
-            cout<<"-------------------------------------------"<<endl;
+/*            cout<<"-------------------------------------------"<<endl;
             cout<<"Episode number: "<<episode<<" | ";
             cout<<"Time step: "<<time_step<<" | ";
             cout<<"Wins: "<<wins<<" | ";
             cout<<"Loses: "<<loses<<" | ";
-            cout<<"Epsilon: "<<epsilon<<endl;
+            cout<<"Epsilon: "<<epsilon<<endl;*/
+            cout<<episode<<","<<time_step<<","<<wins<<","<<loses<<","<<epsilon<<endl;
         }
         //reduce exploration over time and when wins continually increase
-        if (episode % 30 == 0 && wins > wins_prev*1.75)
+        if (episode % 10 == 0 && wins > wins_prev*1.75)
         {
             if (epsilon > 0.06)//because c++ and floats are gay
             {
