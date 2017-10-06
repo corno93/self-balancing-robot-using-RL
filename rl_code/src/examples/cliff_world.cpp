@@ -106,7 +106,7 @@ char cliff_world::next_state(char action, char current_state, std::vector<bool> 
 
     next_state_probs = fabs((rand()/(float)(RAND_MAX + 1)));    //random positive float between 0 and 1
 
-    if (next_state_probs > 0.2)
+    if (next_state_probs > 0.1)
     {
         //next state is not acted by noise
         actual_next_state = cliff_world::take_action(action, current_state);
@@ -115,14 +115,16 @@ char cliff_world::next_state(char action, char current_state, std::vector<bool> 
     else
     {
         //next state is noisy. pick other actions randomly
-        noisey_idx = rand()%(available_actions.size());
-        for (int i = 0; i < available_actions.size()-1;i++)
+        //noisey_idx = rand()%(available_actions.size());
+        //std::cout<<available_actions.size()<<std::endl;
+        for (int i = 0; i < available_actions.size();i++)
         {
             if (available_actions[i] == true)
             {
                 available_idx.push_back(i);
             }
         }
+        noisey_idx = rand()%(available_idx.size());
         action = available_idx[noisey_idx];
         actual_next_state = cliff_world::take_action(action, current_state);
         return actual_next_state;
@@ -145,7 +147,7 @@ signed short int cliff_world::get_reward(char next_state)
     }
     else
     {
-        reward = 1;
+        reward = 0;
     }
     return reward;
 

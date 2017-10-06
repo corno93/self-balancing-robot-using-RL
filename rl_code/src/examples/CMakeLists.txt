@@ -1,6 +1,6 @@
 
 #build cliff world env:
-add_executable(cliff_example cliff_example_main_SARSA.cpp cliff_world.cpp)
+add_executable(cliff_example cliff_example_main.cpp cliff_world.cpp)
 target_link_libraries(cliff_example rl_lib)#not sure what first argument does?
 
 #build two wheeled env:
