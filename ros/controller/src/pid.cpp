@@ -253,8 +253,10 @@ float PID::updatePID()
 	} else {
 		errsgn = 1.0;
 	}
+
+	error = errsgn * sqrt(std::abs(error));
 	
-	error_kp = errsgn * sqrt(std::abs(error * kp));
+	error_kp = error * kp;
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
@@ -273,8 +275,9 @@ float PID::updatePID()
 	error_v = (rpm1 - rpm2) / 2;
 	
 	error_kvp = error_v * kvp;
+	error_kvp = 0;
 	
-	msg.error_kvp = error_kvp;
+	msg.error_kvp = error_kvp;	//error_kvp may have to be negative to add to other gain parameters for coorect feedback direction
 	msg.error_v = error_v;
 
 
