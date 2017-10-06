@@ -9,20 +9,21 @@
 #include <sstream>
 #include <stdlib.h>
 #include <iostream>
+#include <math.h>
 
 #include "robot_teleop_tuner/pid_values.h"
-
+#include "arduino_feedback/feedback.h"
 
 #include "controller/PidData.h"
 #include <std_msgs/Int16.h>
 
-#define FREQUENCY 25
-#define PID_DELTA 0.04
+#define FREQUENCY 100
+#define PID_DELTA 0.01
 #define BAUD_RATE 115200
 
-#define PROP_GAIN 0
+#define PROP_GAIN 130
 #define INT_GAIN 0
-#define DERIV_GAIN 0
+#define DERIV_GAIN 0.06
 
 #define STOP_PWM 130
 
@@ -161,24 +162,35 @@ class PID : public Controller
 	float kp;
 	float ki;
 	float kd;
+
+	float kvp;
+	float kvi;
+	float kvd;
+
 	float pitch_ref;
 	float error_prev;
 	float integral_sum;
+	int encoder_1;
+	int encoder_2;
+	float rpm1;
+	float rpm2;
 
 	controller::PidData msg;
 	ros::Subscriber sub_pid;
+	ros::Subscriber sub_arduino_data;
 	PID(float, float, float);
 	~PID();
 	float updatePID();
 	void init();
 	int saturate(int);
 	void pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input);
+	void encoder_callback(const arduino_feedback::feedback::ConstPtr& encoder_counts);
 	float saturateIntSum(float);
 	void checkReset(void);
 };
 
 PID::PID(float kp_, float ki_, float kd_):
-	pitch_ref(0)
+	pitch_ref(0), kvp(0.1)
 {
 	kp = kp_;
 	ki = ki_;
@@ -186,7 +198,7 @@ PID::PID(float kp_, float ki_, float kd_):
 	this->init();
 	ROS_INFO("pid instance created");
 	sub_pid = n.subscribe("/pid_tuner", 1000, &PID::pid_callback, this);
-	
+	sub_arduino_data = n.subscribe("/arduino_data", 1000, &PID::encoder_callback, this);
 }
 
 void PID::pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input)
@@ -194,6 +206,18 @@ void PID::pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input
     kp = pid_input->p;
     ki = pid_input->i;
     kd = pid_input->d;
+    kvp = pid_input->pv;
+}
+
+void PID::encoder_callback(const arduino_feedback::feedback::ConstPtr& encoder_counts)
+{
+   encoder_1 = encoder_counts->encoder1;
+   encoder_2 = encoder_counts->encoder2;
+   rpm1 = encoder_counts->actual_rpm1;
+   rpm2 = encoder_counts->actual_rpm2;
+   ROS_INFO("rpm 1 %f", rpm1);
+    ROS_INFO("rpm 2 %f", rpm2);
+ 
 }
 
 PID::~PID()
@@ -210,7 +234,7 @@ void PID::init()
 
 void PID::checkReset()
 {
-	if (std::abs(pitch) < 0.3)
+	if (std::abs(pitch) < 0.15)
 	{
 	  this->init();
 	}
@@ -218,12 +242,19 @@ void PID::checkReset()
 
 float PID::updatePID()
 {
-	float error, error_kp, error_ki, error_kd, derivative, pid_cmd;
+	float error,error_v, error_kvp, error_kp, error_ki, error_kd, derivative, pid_cmd;
 	
 	error = pitch - REFERENCE_PITCH;//pitch_ref;//pitch_ref - pitch;
 	msg.error = error;
 
-	error_kp = error * kp;
+	float errsgn = 0.0;
+	if (error < 0.0) {
+		errsgn = -1.0;
+	} else {
+		errsgn = 1.0;
+	}
+	
+	error_kp = errsgn * sqrt(std::abs(error * kp));
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
@@ -238,8 +269,17 @@ float PID::updatePID()
 	msg.error_derivative = error_kd;
 	msg.error_prev = error_prev;
 	error_prev = error;
+
+	error_v = (rpm1 - rpm2) / 2;
 	
-	pid_cmd = (error_kp + error_ki + error_kd);
+	error_kvp = error_v * kvp;
+	
+	msg.error_kvp = error_kvp;
+	msg.error_v = error_v;
+
+
+	
+	pid_cmd = (error_kp + error_ki + error_kd + error_kvp);
 	msg.pid_cmd = pid_cmd;	
 	return pid_cmd;
 }
@@ -292,7 +332,7 @@ int main(int argc, char **argv)
 		pid.time_steps++;
 		pid.msg.time_steps = pid.time_steps;
 
-		ROS_INFO("%f", pid.pitch);
+		//ROS_INFO("%f", pid.pitch);
 		//pid.pitch_tolerance();
 		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
 		pid.checkReset();

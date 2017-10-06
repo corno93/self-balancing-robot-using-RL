@@ -11,3 +11,5 @@ int64 episodes
 int64 time_steps
 float64 rpm1
 float64 rpm2
+float64 error_v
+float64 error_kvp

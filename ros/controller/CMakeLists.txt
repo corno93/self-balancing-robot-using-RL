@@ -157,7 +157,8 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(control src/q_learning.cpp)
+#add_executable(control src/q_learning.cpp)
+add_executable(control src/pid.cpp)
 add_dependencies(control motors_generate_messages_cpp wiringPi)
 
 # DIRECTORY METHOD:

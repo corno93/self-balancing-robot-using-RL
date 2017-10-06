@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
 	try:
-	    term = raw_input("Enter term id: p, i or d: ")
+	    term = raw_input("Enter term id: p, i, d, pv: ")
 	    value = raw_input("Enter value: ")
 	    term = term.strip()
  	    if term == 'p':
@@ -20,6 +20,8 @@ if __name__ == '__main__':
 		    msg.i = float(value)
 	    elif term == 'd':
 		    msg.d = float(value)
+	    elif term == 'pv':
+		    msg.pv = float(value)
 	    else:
 		print "incorrect entered variable.."
 
