@@ -4,7 +4,7 @@
 	<node name="i2c_imu_node" pkg="i2c_imu" type="i2c_imu_node" ns="imu" output="screen">
 	</node>
 
-	<node name="control_pid" pkg="controller" type="control"/> 
+	<node name="control" pkg="controller" type="control"/> 
 
 	<node name="serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
 		<param name="port" value="/dev/ttyACM0"/>

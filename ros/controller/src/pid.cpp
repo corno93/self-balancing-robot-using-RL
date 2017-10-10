@@ -254,9 +254,11 @@ float PID::updatePID()
 		errsgn = 1.0;
 	}
 
-	error = errsgn * sqrt(std::abs(error));
+//	error = errsgn * sqrt(std::abs(error));
+
+	error_kp = (errsgn * sqrt(std::abs(error)))*kp;
 	
-	error_kp = error * kp;
+	//error_kp = error * kp;
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
@@ -282,7 +284,7 @@ float PID::updatePID()
 
 
 	
-	pid_cmd = (error_kp + error_ki + error_kd + error_kvp);
+	pid_cmd = (error_kp + error_ki + error_kd);// + error_kvp);
 	msg.pid_cmd = pid_cmd;	
 	return pid_cmd;
 }
