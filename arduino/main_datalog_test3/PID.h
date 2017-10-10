@@ -3,10 +3,12 @@
 
 #include "fixedpoint.h"
 
-#define dt ((fixed_point_t)0x00000033)
-#define dt_i ((fixed_point_t)0x00000500)
-
-
+//#define dt ((fixed_point_t)0x00000033)
+//#define dt_i ((fixed_point_t)0x00000500)
+//#define dt ((fixed_point_t)0x00000001)
+//#define dt_i ((fixed_point_t)0x00006400)
+#define dt ((fixed_point_t)0x00000005)
+#define dt_i ((fixed_point_t)0x00003200)
 class PID
 {
   public:

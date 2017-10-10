@@ -3,6 +3,7 @@
 //#define USBCON //uses Tx1 (see SabertoothSimplified.h)
 #define ledPin 13
 #define IN_BUFF_SIZE 8
+#define OUT_BUFF_SIZE 8
 //#include <SabertoothSimplified.h>
 #include "encoders.h"
 #include "fixedpoint.h"
@@ -11,11 +12,11 @@
 
 #define M1pin 12
 #define M2pin 11
-<<<<<<< HEAD
 #define STOP 126  //was 128 at some point...
-=======
-#define STOP 128
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+#define BAUD_RATE 115200
+
+char dataStringR1[OUT_BUFF_SIZE] = {0};
+char dataStringR2[OUT_BUFF_SIZE] = {0};
 
 
 //DT VARIBALES
@@ -40,9 +41,9 @@ signed long encoder2count = 0;
 
 //PID VARIABLES:
 boolean PID_flag = false;
-int RPM_ref_m1;
+int RPM_ref_m1 = 0;
 int RPM_actual_m1;
-int RPM_ref_m2;
+int RPM_ref_m2 = 0;
 int RPM_actual_m2;
 int PID_count;
 
@@ -51,7 +52,8 @@ int counter = 0;
 int databuff[IN_BUFF_SIZE];
 
 void setup() {
-    Serial.begin(9600);      // Serial com for data output
+    Serial.begin(BAUD_RATE);      // Serial com for data input
+    Serial1.begin(BAUD_RATE);     // Serial com for data output
   //  SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
     initEncoders();       //Serial.println("Encoders Initialized...");  
     clearEncoderCount();  //Serial.println("Encoders Cleared...");
@@ -59,41 +61,38 @@ void setup() {
     timer3_interrupt_setup(); //encoders read and RPM calcs
  // timer4_interrupt_setup(); //increase rpm ref every 5 secs (debugging)
 
-<<<<<<< HEAD
- // PWM SETTINGS (set timer 1 to 8 prescale to get a PWM with freq )
-=======
- // PWM SETTINGS (set timer 1 to 8 prescale)
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+ // PWM SETTINGS (set timer 1 to 8 prescale to get a PWM with freq 3921.16)
   TCCR1B = TCCR1B & B11111000 | B00000001; 
 
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
-  
-    RPM_ref_m1 = 0;
-    RPM_ref_m2 = 0;
-    analogWrite(M1pin, STOP);  
-    analogWrite(M2pin, STOP);
-    interrupts();
-<<<<<<< HEAD
 
-=======
-    RPM_ref_m1 = 0;
-    RPM_ref_m2 = 0;
-    new_data = true;
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+
+
+    
+    interrupts();
+
 
 
 }
 
 void loop() {
 
+
+
     if (PID_flag)
      {
         PID_flag = false;
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+        sprintf(dataStringR1,"R1%d",RPM_actual_m1); // convert a value to hexa 
+        Serial1.println(dataStringR1);
+        dataStringR1[OUT_BUFF_SIZE] = {0};
+        sprintf(dataStringR2,"R2%d",RPM_actual_m2); // convert a value to hexa 
+        Serial1.println(dataStringR2);
+        dataStringR2[OUT_BUFF_SIZE] = {0};
      }
 
 
@@ -144,6 +143,12 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*6000)/1920;
     RPM_actual_m2 = (encoder2count*6000)/1920;
+//    sprintf(dataStringR1,"R1%d",RPM_actual_m1); // convert a value to hexa 
+//    Serial.println(dataStringR1);
+//    dataStringR1[OUT_BUFF_SIZE] = {0};
+//    sprintf(dataStringR2,"R2%d",RPM_actual_m2); // convert a value to hexa 
+//    Serial.println(dataStringR2);
+//    dataStringR2[OUT_BUFF_SIZE] = {0};
     encoder1count = 0;
     encoder2count = 0;
     clearEncoderCount(); 
