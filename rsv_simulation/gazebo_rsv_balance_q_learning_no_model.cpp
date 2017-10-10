@@ -13,14 +13,23 @@
 
 #include <string>
 #include <map>
-
+#include <fstream>
+#include <sstream>
+#include <iostream>
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
+
+#include <q_model_install/Q_state.h>
+
 
 #include <vector>
 #include <time.h>
 #include <cmath>
 #include <algorithm>
+
+//read model?
+#define MODEL_READ 1
+
 
 #define REFERENCE_PITCH 0.0
 #define PITCH_THRESHOLD 3.5
@@ -30,7 +39,7 @@
 //char actions[ACTIONS] = {-30,-10,0,10,30};
 char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
-#define MAX_EPISODE 50
+#define MAX_EPISODE 60
 
 // 2D state space
 #define STATE_NUM_PHI 9
@@ -59,6 +68,9 @@ class reinforcement_learning
     char action;
     char action_idx;
     float reward_per_ep;
+    int disturbance_cntr;
+    ros::NodeHandle n;
+    ros::Subscriber sub_q;
 
     reinforcement_learning();
     ~reinforcement_learning();
@@ -70,20 +82,159 @@ class reinforcement_learning
     char get_state(float, float);
     //char get_next_state(float,float, char);
     float get_reward(char);
+    void read_model(void);
+    void Q_callback(const q_model_install::Q_state::ConstPtr& q_model);
 };
 
 reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
-     epsilon(0.3), pitch_dot(0.0), prev_pitch(0.0),
-     reward_per_ep(0.0)
+     epsilon(0.6), pitch_dot(0.0), prev_pitch(0.0),
+     reward_per_ep(0.0), disturbance_cntr(0)
 {
+	if (MODEL_READ == 1){
+	read_model();}
 }
 
 reinforcement_learning::~reinforcement_learning()
 {
 }
+
+void reinforcement_learning::Q_callback(const q_model_install::Q_state::ConstPtr& q_model)
+{
+//    Q[0] = q_model->state0;
+//    Q[1] = q_model->state1;
+	//std::cout<<*q_model<<std::endl;
+       	for (int i = 0; i < ACTIONS; i++)
+	{
+	  Q[0][i] = q_model->state0[i]; 
+	  Q[1][i] = q_model->state1[i]; 
+	  Q[2][i] = q_model->state2[i]; 
+	  Q[3][i] = q_model->state3[i]; 
+	  Q[4][i] = q_model->state4[i]; 
+	  Q[5][i] = q_model->state5[i]; 
+	  Q[6][i] = q_model->state6[i]; 
+	  Q[7][i] = q_model->state7[i]; 
+	  Q[8][i] = q_model->state8[i]; 
+	  Q[9][i] = q_model->state9[i]; 
+	  Q[10][i] = q_model->state10[i]; 
+	  Q[11][i] = q_model->state11[i]; 
+	  Q[12][i] = q_model->state12[i]; 
+	  Q[13][i] = q_model->state13[i]; 
+	  Q[14][i] = q_model->state14[i]; 
+	  Q[15][i] = q_model->state15[i]; 
+	  Q[16][i] = q_model->state16[i]; 
+	  Q[17][i] = q_model->state17[i]; 
+	  Q[18][i] = q_model->state18[i]; 
+	  Q[19][i] = q_model->state19[i]; 
+	  Q[20][i] = q_model->state20[i]; 
+	  Q[21][i] = q_model->state21[i]; 
+	  Q[22][i] = q_model->state22[i]; 
+	  Q[23][i] = q_model->state23[i]; 
+	  Q[24][i] = q_model->state24[i]; 
+	  Q[25][i] = q_model->state25[i]; 
+	  Q[26][i] = q_model->state26[i]; 
+	  Q[27][i] = q_model->state27[i]; 
+	  Q[28][i] = q_model->state28[i]; 
+	  Q[29][i] = q_model->state29[i]; 
+	  Q[30][i] = q_model->state30[i]; 
+	  Q[31][i] = q_model->state31[i]; 
+	  Q[32][i] = q_model->state32[i]; 
+	  Q[33][i] = q_model->state33[i]; 
+	  Q[34][i] = q_model->state34[i]; 
+	  Q[35][i] = q_model->state35[i]; 
+	  Q[36][i] = q_model->state36[i]; 
+	  Q[37][i] = q_model->state37[i]; 
+	  Q[38][i] = q_model->state38[i]; 
+	  Q[39][i] = q_model->state39[i]; 
+	  Q[30][i] = q_model->state40[i]; 
+	  Q[41][i] = q_model->state41[i]; 
+	  Q[42][i] = q_model->state42[i]; 
+	  Q[43][i] = q_model->state43[i]; 
+	  Q[44][i] = q_model->state44[i]; 
+	  Q[45][i] = q_model->state45[i]; 
+	  Q[46][i] = q_model->state46[i]; 
+	  Q[47][i] = q_model->state47[i]; 
+	  Q[48][i] = q_model->state48[i]; 
+	  Q[49][i] = q_model->state49[i]; 
+	  Q[50][i] = q_model->state50[i]; 
+	  Q[51][i] = q_model->state51[i]; 
+	  Q[52][i] = q_model->state52[i]; 
+	  Q[53][i] = q_model->state53[i]; 
+	  Q[54][i] = q_model->state54[i]; 
+	  Q[55][i] = q_model->state55[i]; 
+	  Q[56][i] = q_model->state56[i]; 
+	  Q[57][i] = q_model->state57[i]; 
+	  Q[58][i] = q_model->state58[i]; 
+	  Q[59][i] = q_model->state59[i]; 
+	  Q[60][i] = q_model->state60[i]; 
+	  Q[61][i] = q_model->state61[i]; 
+	  Q[62][i] = q_model->state62[i]; 
+	  Q[63][i] = q_model->state63[i]; 
+	  Q[64][i] = q_model->state64[i]; 
+	  Q[65][i] = q_model->state65[i]; 
+	  Q[66][i] = q_model->state66[i]; 
+	  Q[67][i] = q_model->state67[i]; 
+	  Q[68][i] = q_model->state68[i]; 
+	  Q[69][i] = q_model->state69[i];
+	  Q[70][i] = q_model->state70[i]; 
+	  Q[71][i] = q_model->state71[i]; 
+	  Q[72][i] = q_model->state72[i]; 
+	  Q[73][i] = q_model->state73[i]; 
+	  Q[74][i] = q_model->state74[i]; 
+	  Q[75][i] = q_model->state75[i]; 
+	  Q[76][i] = q_model->state76[i]; 
+	  Q[77][i] = q_model->state77[i]; 
+	  Q[78][i] = q_model->state78[i]; 
+	  Q[79][i] = q_model->state79[i]; 
+	  Q[80][i] = q_model->state80[i]; 
+	  Q[81][i] = q_model->state81[i]; 
+	  Q[82][i] = q_model->state82[i]; 
+	  Q[83][i] = q_model->state83[i]; 
+	  Q[84][i] = q_model->state84[i]; 
+	  Q[85][i] = q_model->state85[i]; 
+	  Q[86][i] = q_model->state86[i]; 
+	  Q[87][i] = q_model->state87[i]; 
+	  Q[88][i] = q_model->state88[i]; 
+	  Q[89][i] = q_model->state89[i];  
+	  Q[90][i] = q_model->state90[i]; 
+	  Q[91][i] = q_model->state91[i]; 
+	  Q[92][i] = q_model->state92[i]; 
+	  Q[93][i] = q_model->state93[i]; 
+	  Q[94][i] = q_model->state94[i]; 
+	  Q[95][i] = q_model->state95[i]; 
+	  Q[96][i] = q_model->state96[i]; 
+	  Q[97][i] = q_model->state97[i]; 
+	  Q[98][i] = q_model->state98[i]; 
+	  Q[99][i] = q_model->state99[i]; 
+	  Q[100][i] = q_model->state100[i]; 
+	  Q[101][i] = q_model->state101[i]; 
+	  Q[102][i] = q_model->state102[i]; 
+	  Q[103][i] = q_model->state103[i]; 
+	  Q[104][i] = q_model->state104[i]; 
+	  Q[105][i] = q_model->state105[i]; 
+	  Q[106][i] = q_model->state106[i]; 
+	  Q[107][i] = q_model->state107[i]; 
+	  Q[108][i] = q_model->state108[i]; 
+	  Q[109][i] = q_model->state109[i]; 
+	  Q[110][i] = q_model->state110[i]; 
+	  Q[111][i] = q_model->state111[i]; 
+	  Q[112][i] = q_model->state112[i]; 
+	  Q[113][i] = q_model->state113[i]; 
+	  Q[114][i] = q_model->state114[i]; 
+	  Q[115][i] = q_model->state115[i]; 
+	  Q[116][i] = q_model->state116[i]; 
+	  Q[117][i] = q_model->state117[i]; 
+	  Q[118][i] = q_model->state118[i]; 
+	  Q[119][i] = q_model->state119[i]; 
+
+
+ 	}
+
+
+}
+
 
 float reinforcement_learning::get_reward(char next_state)
 {
@@ -160,6 +311,11 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
   return( j + (STATE_NUM_PHI_D + 1) * i);
 }
 
+
+void reinforcement_learning::read_model(void)
+{
+	sub_q = n.subscribe("/q_installer", 1000, &reinforcement_learning::Q_callback, this);
+}
 
 
 /*char reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
@@ -288,6 +444,7 @@ char q_learning::choose_action(char curr_state)
 
 q_learning controller;
 
+
 namespace gazebo
 {
 
@@ -297,6 +454,7 @@ GazeboRsvBalance::~GazeboRsvBalance() {}
 
 void GazeboRsvBalance::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 {
+
   this->parent_ = _parent;
   this->sdf_ = _sdf;
   this->gazebo_ros_ = GazeboRosPtr(new GazeboRos(_parent, _sdf, "RsvBalancePlugin"));
@@ -965,13 +1123,35 @@ void GazeboRsvBalance::UpdateChild()
 	  this->epsilon_delta_prev = epsilon_delta;
 	}
 
+	//end simulation
 	if (controller.episode_num == MAX_EPISODE)
 	{
 	  ROS_INFO("SIMULATION COMPLETE AT %d EPISODES", controller.episode_num);
 	  while(1){}
 	}
 
+	//add disturbances
+	this->disturbance_time = parent_->GetWorld()->GetSimTime();
+	if (this->disturbance_time - this->disturbance_time_prev > 1)
+	{
+	   if (controller.disturbance_cntr % 2 == 0)
+	   {
+	     this->joints_[LEFT]->SetForce(0,-100);
+	     this->joints_[RIGHT]->SetForce(0, 100);
+	   }else{
+	     this->joints_[LEFT]->SetForce(0,100);
+	     this->joints_[RIGHT]->SetForce(0, -100);
+	   }
+	   controller.disturbance_cntr++;
+	   controller.msg.disturbance = controller.disturbance_cntr;
+	   this->disturbance_time_prev = this->disturbance_time;
+	   ROS_INFO("DISTURBANCE!!!");
+	}
+
+
       }	
+
+
 	
       break;
     case TRACTOR:
