@@ -33,9 +33,7 @@
 
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
-//int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
-int actions[ACTIONS] = {70, 90, 110, 130, 150, 170, 210};
-
+int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
 
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 50
@@ -154,6 +152,8 @@ class reinforcement_learning
     //char get_next_state(float,float, char);
     float get_reward(float);
     void publishQstate(void);
+    int rpm_transform(void);
+
 };
 
 reinforcement_learning::reinforcement_learning()
@@ -211,6 +211,13 @@ void reinforcement_learning::TD_update(char curr_state, int action, char next_st
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
 }
+
+
+int reinforcement_learning::rpm_transform(void){
+	return int(-450.58*action +350);
+
+}
+
 
 char reinforcement_learning::get_state(float pitch, float pitch_dot)
 {
@@ -489,17 +496,17 @@ int main(int argc, char **argv)
 
 
 
-	  //next episode
+
 	  if (std::abs(controller.pitch) > PITCH_THRESHOLD)
 		{
 		  restart_delta = ros::Time::now().toSec();
-		  if (restart_delta - restart_delta_prev > 1)
+		  if (restart_delta - restart_delta_prev > 0.1)
 			{
 
 			  ROS_INFO("RESTART SIM - pitch is: %f!", controller.pitch);
 			  controller.episode_num++;
 			  controller.msg.episodes = controller.episode_num;
-			  ROS_INFO("EPISODE COUNT: %d", controller.episode_num);
+			  
 			  //initalise appropriate variables
 			  controller.time_steps = 0;
 			  controller.prev_pitch = 0;
@@ -516,10 +523,6 @@ int main(int argc, char **argv)
 			  controller.msg.td_update = 0;
 			  controller.msg.td_target = 0;
 			  controller.msg.td_error = 0;
-
-			  pwm_msg.data = STOP_PWM;
-			  pwm_command.publish(pwm_msg);
-
 			}
 			restart_delta_prev = restart_delta;
 	
@@ -563,7 +566,7 @@ int main(int argc, char **argv)
 			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
 			 
 			 // take action (ie. publish action)
-			  pwm_msg.data = controller.action;
+			  pwm_msg.data = 60;//controller.action;
 			  pwm_command.publish(pwm_msg);
 
 
@@ -597,11 +600,12 @@ int main(int argc, char **argv)
 			  // select action
 			  controller.action_idx = controller.choose_action(controller.current_state);
 			  controller.action = actions[controller.action_idx];
-			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
-			  ROS_INFO("action idx %d and int action: %d", controller.action_idx, int(controller.action));	
+//			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
+//			  ROS_INFO("action idx %d and int action: %d", controller.action_idx, int(controller.action));	
 			  
 			  // take action (ie. publish action)
-			  pwm_msg.data = controller.action;
+//			  pwm_msg.data = controller.action;
+			  pwm_msg.data = 60;
 			  pwm_command.publish(pwm_msg);
 
 		 	}

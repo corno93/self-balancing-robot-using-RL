@@ -21,25 +21,15 @@
 #define PID_DELTA 0.01
 #define BAUD_RATE 115200
 
-#define PROP_GAIN 130
+#define PROP_GAIN 160
 #define INT_GAIN 0
-#define DERIV_GAIN 0.06
+#define DERIV_GAIN 0.1
 
 #define STOP_PWM 130
 
 #define PITCH_FIX 0
 #define REFERENCE_PITCH 0
 
-namespace patch
-{
-	template < typename T > 
-	std::string to_string(const T& t)
-	{
-		std::ostringstream stm;
-		stm << t;
-		return stm.str();
-	}
-}
 
 
 
@@ -118,17 +108,17 @@ std::string Controller::motor_cmd_generator(int cmd)
 	int cmd_abs = std::abs(cmd);
 	if (cmd_abs >= 100)
 	{	
-		m1 = patch::to_string(cmd_abs);
+		//m1 = patch::to_string(cmd_abs);
 //TODO: boost vs string stream...who preforms best?!		
-//		m1 = boost::lexical_cast<std::string>(cmd);
+		m1 = '0';//boost::lexical_cast<std::string>(cmd);
 		m2 = m1;
 	} else if (cmd_abs >= 10)
 	{
-		m1 = "0" + patch::to_string(cmd_abs);
+		m1 = "0";// patch::to_string(cmd_abs);
 		m2 = m1;
 	} else if (cmd_abs >= 0)
 	{
-		m1 = "00" + patch::to_string(cmd_abs);
+		m1 = "00"; //+ patch::to_string(cmd_abs);
 		m2 = m1;
 	}
 	if (cmd > 0)
@@ -254,11 +244,10 @@ float PID::updatePID()
 		errsgn = 1.0;
 	}
 
-//	error = errsgn * sqrt(std::abs(error));
 
-	error_kp = (errsgn * sqrt(std::abs(error)))*kp;
-	
-	//error_kp = error * kp;
+	error_kp = (errsgn * sqrt(std::abs(error) * kp));
+//	error_kp = (errsgn * exp(std::abs(error) * kp));	
+//	error_kp = error * kp;
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
@@ -347,9 +336,13 @@ int main(int argc, char **argv)
 		pid_cmd = pid.saturate(pid_cmd);
 		//ROS_INFO("pid cmd: %d", pid_cmd);
 		pid.msg.motor_cmd = pid_cmd;	
-	//	command = pid.motor_cmd_generator(pid_cmd);
 	//	std::cout<<"motor cmd: "<<command<<std::endl;
+		if (std::abs(pid.pitch) > 5)
+		{
+			pwm_msg.data = STOP_PWM;
+		}else{
 		pwm_msg.data = pid_cmd;
+		}
 		pwm_command.publish(pwm_msg);
 	//	pid.write_serial_command(command);
 
