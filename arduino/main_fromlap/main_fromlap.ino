@@ -27,8 +27,8 @@ unsigned long end_ = 0;
 
 
 //OBJECT INSTANCES
-WheelController wheelCtrl1(0x00003500,0x00001500,0x00000020);
-WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
+WheelController wheelCtrl1(0x0000BF00, 0x00000FF0, 0x00000350);
+WheelController wheelCtrl2(0x0000BF00, 0x00000FF0, 0x00000350);
 
 
 //INTERRUPT VARIABLES
@@ -96,8 +96,8 @@ void setup() {
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
-    RPM_ref_m1 = 30;
-    RPM_ref_m2 = 30;
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
 
