@@ -28,7 +28,7 @@
 #define FREQUENCY 25
 #define RL_DELTA 0.04
 #define STOP_PWM 130
-
+#define STOP_TORQUE 0
 #define PITCH_FIX 0
 
 #define REFERENCE_PITCH 0.0
@@ -37,7 +37,8 @@
 
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
-int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
+//int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
+float actions[ACTIONS] = {-0.61, -0.7, 0, 0.7, 0.61};
 //int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
 
 
@@ -144,7 +145,7 @@ class reinforcement_learning
     char current_state;
     char next_state;
     controller::State msg;
-    int action;
+    float action;
     char action_idx;
     float reward_per_ep;
     ros::NodeHandle n;	//make private? eh..
@@ -165,7 +166,7 @@ class reinforcement_learning
     void publishQstate(void);
     void read_model(void);
     void Q_callback(const q_model_install::Q_state::ConstPtr& q_model);
-
+    int rpm_transform(void);
 };
 reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
@@ -365,6 +366,23 @@ void reinforcement_learning::TD_update(char curr_state, int action, char next_st
   msg.alpha = alpha;
   msg.discount_factor = discount_factor;    
 }
+
+
+int reinforcement_learning::rpm_transform(void){
+	float action_sng;
+	if (action < 0){
+	action_sng = -1.0;
+	}else{
+	action_sng = 1.0;
+	}
+
+	if (action == 0){
+	return 0;
+	}else{
+	return int(action_sng*(-450.58*std::abs(action) +350));
+	}
+}
+
 
 char reinforcement_learning::get_state(float pitch, float pitch_dot)
 {
@@ -673,7 +691,7 @@ int main(int argc, char **argv)
 
 			}
 			restart_delta_prev = restart_delta;
-	   	        pwm_msg.data = 0;//STOP_PWM;
+	   	        pwm_msg.data = STOP_TORQUE;//STOP_PWM;
 		        pwm_command.publish(pwm_msg);
 		}
 
@@ -712,10 +730,10 @@ int main(int argc, char **argv)
 				  // select action
 			  controller.action_idx = controller.choose_action(controller.current_state);
 			  controller.action = actions[controller.action_idx];
-			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
+			  ROS_INFO("action idx %d and action: %f", controller.action_idx, controller.action);	
 			 
 			 // take action (ie. publish action)
-			  pwm_msg.data = controller.action;
+			  pwm_msg.data = controller.rpm_transform();
 			  pwm_command.publish(pwm_msg);
 
 
@@ -749,11 +767,11 @@ int main(int argc, char **argv)
 			  // select action
 			  controller.action_idx = controller.choose_action(controller.current_state);
 			  controller.action = actions[controller.action_idx];
-			  ROS_INFO("action idx %d and action: %d", controller.action_idx, controller.action);	
-			  ROS_INFO("action idx %d and int action: %d", controller.action_idx, int(controller.action));	
+			  ROS_INFO("action idx %d and action: %f", controller.action_idx, controller.action);	
 			  
 			  // take action (ie. publish action)
-			  pwm_msg.data = controller.action;
+			  pwm_msg.data = controller.rpm_transform();
+			  ROS_INFO("action in RPMS is: %d" ,pwm_msg.data);
 			  pwm_command.publish(pwm_msg);
 
 		 	}
