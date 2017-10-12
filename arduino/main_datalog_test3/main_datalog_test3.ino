@@ -20,7 +20,7 @@ unsigned long end_ = 0;
 
 
 //OBJECT INSTANCES
-WheelController wheelCtrl1(0x00003500,0x00000500,0x00000010);
+WheelController wheelCtrl1(0x0000BF00,0x00000FF0,0x00000350);
 WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
 
 //PID motor2(0,0,0);
@@ -143,8 +143,8 @@ void timer3_interrupt_setup()
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
   //timer3_counter = 40536;   //40536: 10hz ints at 64 prescale
-  timer3_counter = 45536;     //100hz at 8 prescale
-  // timer3_counter = 55536;     //200Hz at 8 prescale
+  //timer3_counter = 45536;     //100hz at 8 prescale
+   timer3_counter = 55536;     //200Hz at 8 prescale
  //  timer3_counter = 25536;     //400Hz at 1 prescale
 
   TCNT3 = timer3_counter;   // preload timer
@@ -175,8 +175,8 @@ ISR(TIMER3_OVF_vect)        // main interrupt service routine
   {    
 
     ISR3_counter = 0;
-    RPM_actual_m1 = (encoder1count*3000)/1920;
-    RPM_actual_m2 = (encoder2count*3000)/1920;
+    RPM_actual_m1 = (encoder1count*6000)/1920;
+    RPM_actual_m2 = (encoder2count*6000)/1920;
     
     *(data_ptr_M1 + data_cntr) = RPM_actual_m1;
   //  *(data_ptr_M2 + data_cntr) = RPM_actual_m2;
@@ -243,15 +243,16 @@ void timer4_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer4_counter = 49911;   //49911: 4hz ints at 256 prescale
+ // timer4_counter = 49911;   //49911: 4hz ints at 256 prescale
   //timer3_counter = 45536;     //100hz at 8 prescale
-  
+    timer4_counter = 55536;     //25hz at 64 prescale
+
   TCNT4 = timer4_counter;   // preload timer
   TCCR4B &=~7; //clear
  // TCCR4B |= (1 << CS11);    //8 prescaler
-  TCCR4B |= (1 << CS12);    // 256 prescaler 
- //TCCR3B |= (1 << CS11);    // 64 prescaler 
- //TCCR3B |= (1 << CS10);    // 64 prescaler 
+ // TCCR4B |= (1 << CS12);    // 256 prescaler 
+ TCCR4B |= (1 << CS11);    // 64 prescaler 
+ TCCR4B |= (1 << CS10);    // 64 prescaler 
   TIMSK4 |= (1 << TOIE4);   // enable timer overflow interrupt
 }
 
@@ -261,7 +262,7 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
 {
 
   TCNT4 = timer4_counter;   // preload timer
-  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
   ISR4_cntr++;
 
   if(ISR4_cntr == CMD_FREQ*1)
