@@ -1,10 +1,12 @@
 
+//WORKING SPEED CONTROLLER CODE
 
 //#define USBCON //uses Tx1 (see SabertoothSimplified.h)
 #define ledPin 13
 #define IN_BUFF_SIZE 8
 #define OUT_BUFF_SIZE 8
 //#include <SabertoothSimplified.h>
+#include <ACS712.h>
 #include "encoders.h"
 #include "fixedpoint.h"
 #include "PID.h"
@@ -17,6 +19,8 @@
 
 char dataStringR1[OUT_BUFF_SIZE] = {0};
 char dataStringR2[OUT_BUFF_SIZE] = {0};
+
+#define KT 0.1552
 
 
 //DT VARIBALES
@@ -31,6 +35,7 @@ WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
 WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
 
 
+
 //INTERRUPT VARIABLES
 int timer3_counter;
 int ISR3_counter=0;
@@ -38,6 +43,12 @@ int ISR3_counter=0;
 //ENCODER VARIABLES
 signed long encoder1count = 0;
 signed long encoder2count = 0;
+
+//TORQUE VARIABLES
+float torque_M1 = 0;
+float torque_M2 = 0;
+float I_M1 = 0;
+float I_M2 = 0;
 
 //PID VARIABLES:
 boolean PID_flag = false;
@@ -67,6 +78,14 @@ void setup() {
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
 
+<<<<<<< HEAD
+  
+    interrupts();
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+    new_data = true;
+=======
+>>>>>>> 7f5088dd4de4bfff424a9d7935b1ddf006e21cf7
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
 
@@ -79,20 +98,51 @@ void setup() {
 }
 
 void loop() {
+<<<<<<< HEAD
+  int RawValue_M1, RawValue_M2;
+  double Voltage_M1,Voltage_M2, Amps_M1, Amps_M2;
+=======
 
 
 
+>>>>>>> 7f5088dd4de4bfff424a9d7935b1ddf006e21cf7
     if (PID_flag)
      {
         PID_flag = false;
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+<<<<<<< HEAD
+//        torque_M1 = I_M1 * KT;
+//        torque_M2 = I_M2 * KT;
+//        Serial.print("torqueM1 is: ");Serial.println(torque_M1);
+//        Serial.print("torqueM2 is: ");Serial.println(torque_M2);
+//        Serial.print("CurrentM1 is: ");Serial.println(I_M1);
+        Serial.print("CurrentM2 is: ");Serial.println(I_M2);
+    //    average = average + (.0264 * analogRead(A0) -13.51) / 1000;
+
+        //get averaged ADC values for current in motor's armature
+        for (int i = 0; i < 5; i++)
+        {
+           RawValue_M1 += analogRead(A15);
+           RawValue_M2 += analogRead(A14);
+        }
+         Voltage_M1 = ((RawValue_M1/5) / 1023.0) * 5000; // Gets you mV
+         Amps_M1 = ((Voltage_M1 - 2500) / 185);
+         Voltage_M2 = ((RawValue_M2/5) / 1023.0) * 5000; // Gets you mV
+         Amps_M2 = ((Voltage_M2 - 2500) / 185);
+         Serial.print("current M1 wire: " );Serial.println(Amps_M1);
+         Serial.print("current M2 wire: " );Serial.println(Amps_M2);
+         RawValue_M1 = 0;
+         RawValue_M2 = 0;
+
+=======
         sprintf(dataStringR1,"R1%d",RPM_actual_m1); // convert a value to hexa 
         Serial1.println(dataStringR1);
         dataStringR1[OUT_BUFF_SIZE] = {0};
         sprintf(dataStringR2,"R2%d",RPM_actual_m2); // convert a value to hexa 
         Serial1.println(dataStringR2);
         dataStringR2[OUT_BUFF_SIZE] = {0};
+>>>>>>> 7f5088dd4de4bfff424a9d7935b1ddf006e21cf7
      }
 
 
@@ -134,6 +184,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
 
   encoder1count = readEncoder(1); 
   encoder2count = readEncoder(2);
+  
 
   ISR3_counter++;
 
