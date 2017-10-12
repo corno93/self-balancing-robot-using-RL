@@ -25,8 +25,8 @@
 //uses the gazebo sim model
 #define MODEL_READ 0
 
-#define FREQUENCY 100
-#define RL_DELTA 0.01
+#define FREQUENCY 25
+#define RL_DELTA 0.04
 #define STOP_PWM 130
 
 #define PITCH_FIX 0
@@ -37,8 +37,8 @@
 
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
-// actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
-int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
+int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
+//int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
 
 
 #define WHEEL_RADIUS 0.19
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
 
 			}
 			restart_delta_prev = restart_delta;
-	   	        pwm_msg.data = STOP_PWM;
+	   	        pwm_msg.data = 0;//STOP_PWM;
 		        pwm_command.publish(pwm_msg);
 		}
 
