@@ -22,16 +22,17 @@
 #include <cmath>
 #include <algorithm>
 
-#define MODEL_READ 1
+//uses the gazebo sim model
+#define MODEL_READ 0
 
-#define FREQUENCY 50
-#define RL_DELTA 0.02
+#define FREQUENCY 100
+#define RL_DELTA 0.01
 #define STOP_PWM 130
 
 #define PITCH_FIX 0
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 3.5
+#define PITCH_THRESHOLD 5
 #define ACTIONS 7
 
 
@@ -50,7 +51,7 @@ int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
 
 
 
-float phi_states[STATE_NUM_PHI] = {-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3};
+float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
 float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 
 
@@ -170,7 +171,7 @@ reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
-     epsilon(0.0), pitch_dot(0.0), prev_pitch(0.0),
+     epsilon(0.6), pitch_dot(0.0), prev_pitch(0.0),
      reward_per_ep(0.0)
 {
 q_state_publisher = n.advertise<controller::Q_state>("/Q_state", 1000);
@@ -735,7 +736,7 @@ int main(int argc, char **argv)
 			  controller.msg.reward_per_ep = controller.reward_per_ep;
 
 			  //TD update
-			 // controller.TD_update(controller.current_state, controller.action_idx, controller.next_state, reward);
+			  controller.TD_update(controller.current_state, controller.action_idx, controller.next_state, reward);
 			  
 			  // publish Q(s,a) matrix
 			  controller.publishQstate();	
