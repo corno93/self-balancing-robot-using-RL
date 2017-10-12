@@ -11,8 +11,8 @@
 		<param name="baud"  value="57600" />
 	</node>
 
-	<node name="pid_tuning" pkg="robot_teleop_tuner" type="pid_tuning.py" output="screen"> 
-	</node>
+<!--	<node name="pid_tuning" pkg="robot_teleop_tuner" type="pid_tuning.py" output="screen"> 
+	</node>-->
 
 
 	<node name="q_install_trial" pkg="q_model_install" type="q_install_trial.py">

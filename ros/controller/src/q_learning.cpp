@@ -23,16 +23,16 @@
 #include <algorithm>
 
 //uses the gazebo sim model
-#define MODEL_READ 1
-
-#define FREQUENCY 25
-#define RL_DELTA 0.04
+#define MODEL_READ 0
+#define EPSILON 0.3
+#define FREQUENCY 10
+#define RL_DELTA 0.1
 #define STOP_PWM 130
 #define STOP_TORQUE 0
-#define PITCH_FIX 0
+#define PITCH_FIX 5.5	
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 7
+#define PITCH_THRESHOLD 15
 #define ACTIONS 7
 
 
@@ -42,22 +42,30 @@
 //int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
 //float actions[ACTIONS] = {-0.5, -0.25, -0.127, 0, 0.127, 0.25, 0.5}; //max torque is torque required to counteract 10 deg fall. 
 //these torque produce very high RPMs that are impracticle for this sytem. 
-float actions[ACTIONS] =  {-0.575, -0.643, -0.71, 0, 0.71, 0.643, 0.575};
+//float actions[ACTIONS] =  {-0.575, -0.643, -0.71, 0, 0.71, 0.643, 0.575};
 //these actions produce the following RPMs: -90, -60, -30, 0, 30, 60, 90
 
 
+
+//float actions[ACTIONS] =  {-0.643, -0.71, -0.73, 0, 0.73,  0.71, 0.643};
+//float actions[ACTIONS] =  {0.71, 0.73, 0.755, 0, -0.755, -0.73,  -0.71};
+float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
+
+
+
 #define WHEEL_RADIUS 0.19
-#define MAX_EPISODE 50
+#define MAX_EPISODE 120
 
 // 2D state space
 #define STATE_NUM_PHI 9
 #define STATE_NUM_PHI_D 11
 
+//T1
+//float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
+//float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
+float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10};
+float phi_d_states[STATE_NUM_PHI_D] = {-40, -30, -20, -10, -5, 0, 5, 10, 20, 30, 40};
 
-
-
-float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
-float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 
 
 class Controller
@@ -122,7 +130,7 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	//double roll, pitch, yaw;
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
-	pitch = pitch*(180/M_PI) + PITCH_FIX;
+	pitch = pitch*(180/M_PI) - PITCH_FIX;
 }		
 
 
@@ -179,7 +187,7 @@ reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
-     epsilon(0.6), pitch_dot(0.0), prev_pitch(0.0),
+     epsilon(EPSILON), pitch_dot(0.0), prev_pitch(0.0),
      reward_per_ep(0.0)
 {
 q_state_publisher = n.advertise<controller::Q_state>("/Q_state", 1000);
@@ -344,7 +352,8 @@ float reinforcement_learning::get_reward(float pitch)
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   
-  return (-squared_error_pitch + squared_error_pitch_dot); 
+//  return (-squared_error_pitch + squared_error_pitch_dot); 
+  return (-squared_error_pitch);
 }
 
 char reinforcement_learning::choose_action(char)
