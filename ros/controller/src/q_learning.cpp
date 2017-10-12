@@ -23,7 +23,7 @@
 #include <algorithm>
 
 //uses the gazebo sim model
-#define MODEL_READ 0
+#define MODEL_READ 1
 
 #define FREQUENCY 25
 #define RL_DELTA 0.04
@@ -32,14 +32,18 @@
 #define PITCH_FIX 0
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 5
+#define PITCH_THRESHOLD 7
 #define ACTIONS 7
 
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
 //int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
-float actions[ACTIONS] = {-0.61, -0.7, 0, 0.7, 0.61};
+//float actions[ACTIONS] = {-0.61, -0.7, 0, 0.7, 0.61};
 //int actions[ACTIONS] = {100, 110, 120, 130, 140, 150, 160};
+//float actions[ACTIONS] = {-0.5, -0.25, -0.127, 0, 0.127, 0.25, 0.5}; //max torque is torque required to counteract 10 deg fall. 
+//these torque produce very high RPMs that are impracticle for this sytem. 
+float actions[ACTIONS] =  {-0.575, -0.643, -0.71, 0, 0.71, 0.643, 0.575};
+//these actions produce the following RPMs: -90, -60, -30, 0, 30, 60, 90
 
 
 #define WHEEL_RADIUS 0.19
@@ -78,6 +82,8 @@ class Controller
 		double pitch;
 		double yaw;
 
+		bool motors;
+
 };
 
 
@@ -86,6 +92,7 @@ Controller::Controller()
 	:	roll(0.0)
 	    ,	pitch(0.0)
 	    ,	yaw(0.0)
+	    ,   motors(false)
 {
 	//Ros Init (subscribe to IMU topic)
 	sub_imu = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
@@ -659,7 +666,11 @@ int main(int argc, char **argv)
 	{
 	  ros::spinOnce(); //update pitch
 
-
+	
+	  if(std::abs(controller.pitch) < 0.5)
+	  {
+	  	controller.motors = true;
+	  }
 
 	  //next episode
 	  if (std::abs(controller.pitch) > PITCH_THRESHOLD)
@@ -693,10 +704,11 @@ int main(int argc, char **argv)
 			restart_delta_prev = restart_delta;
 	   	        pwm_msg.data = STOP_TORQUE;//STOP_PWM;
 		        pwm_command.publish(pwm_msg);
+			controller.motors = false;
 		}
 
 		  // apply control if segway is still in pitch range
-		  if (std::abs(controller.pitch) <= PITCH_THRESHOLD)
+		  if (std::abs(controller.pitch) <= PITCH_THRESHOLD && controller.motors == true)
 		  {
 			// class member variables
 			controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
