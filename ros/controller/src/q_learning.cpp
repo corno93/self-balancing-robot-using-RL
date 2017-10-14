@@ -35,9 +35,9 @@
 #define PITCH_FIX 5.5	
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 15
-#define ACTIONS 7
-#define RUNNING_AVG 5
+#define PITCH_THRESHOLD 12
+#define ACTIONS 5
+#define RUNNING_AVG 3
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
 //int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
@@ -54,7 +54,9 @@
 //float actions[ACTIONS] =  {0.71, 0.73, 0.755, 0, -0.755, -0.73,  -0.71};
 //float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
 //NOTE: changed to using RPMs for convienence:
-float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
+//float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
+float actions[ACTIONS] =  {-45, -20,  0,  30, 45}; //rpms: 45, 30, 20
+
 
 
 
@@ -70,8 +72,8 @@ float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
 //float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
-float phi_d_states[STATE_NUM_PHI_D] = {-30, -20, -15, -10, -5, 0, 5, 10, 15, 20, 30};
-
+float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
+//float phi_d_states_high_vel[STATE_NUM_PHI_D] = {-30, -25, -20, -15, 0, 15, 20, 25, 30};
 
 
 class Controller
@@ -374,20 +376,36 @@ float reinforcement_learning::get_reward(float pitch)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
   float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
+  float sqrd_err_pitch_d;
+  float reward;
 
+  if (pitch_dot > 0 && pitch < REFERENCE_PITCH)
+  {
+    sqrd_err_pitch_d = pow((pitch_dot - 0), 2);
+    reward = -squared_error_pitch + sqrd_err_pitch_d;
+  }else if (pitch_dot < 0 && pitch > REFERENCE_PITCH)
+  {	
+    sqrd_err_pitch_d = pow((pitch_dot - 0), 2);
+    reward = -squared_error_pitch + sqrd_err_pitch_d;
+  }else{
+    sqrd_err_pitch_d = pow((pitch_dot_filtered - 0), 2);
+    reward = -(squared_error_pitch + sqrd_err_pitch_d);
+  }
+  return reward;
+}
 /*  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
 */
-   if (pitch_dot_filtered < 0 && pitch < REFERENCE_PITCH)
+/*   if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
-  else if (pitch_dot_filtered > 0 && pitch > REFERENCE_PITCH)
+  else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   
   return (-squared_error_pitch + squared_error_pitch_dot + time_steps); 
 }
-
+*/
 char reinforcement_learning::choose_action(char)
 {
 }
@@ -451,6 +469,23 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
      }
    }
 
+
+/*  if (std::abs(pitch) > 7.5)
+  {
+      for (char phi_d_idx = 0; phi_d_idx < STATE_NUM_PHI_D; phi_d_idx++)
+      {
+      if (pitch_dot <= phi_d_states_high_vel[phi_d_idx])
+       {
+        j = phi_d_idx;
+        break;
+       }else if (pitch_dot > phi_d_states_high_vel[STATE_NUM_PHI_D - 1])
+        {
+         j = STATE_NUM_PHI_D;
+         break;
+        }
+      }
+  }else{
+*/
   for (char phi_d_idx = 0; phi_d_idx < STATE_NUM_PHI_D; phi_d_idx++)
   {
     if (pitch_dot <= phi_d_states[phi_d_idx])
@@ -463,7 +498,7 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
       break;
     }
  }
- 
+ //}
   return( j + (STATE_NUM_PHI_D + 1) * i);
 }
 
@@ -861,7 +896,11 @@ int main(int argc, char **argv)
 			  {
 				ROS_INFO("DECREASE PARAMS");
 				controller.epsilon = controller.epsilon/2;
-				controller.msg.epsilon = controller.epsilon;
+			    if (controller.epsilon < 0.1){
+				  controller.epsilon = 0;
+				}
+		  	   controller.msg.epsilon = controller.epsilon;
+				
 			  }
 			  epsilon_delta_prev = epsilon_delta;
 			}
