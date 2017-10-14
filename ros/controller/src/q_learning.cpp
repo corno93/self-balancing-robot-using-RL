@@ -9,6 +9,8 @@
 #include <sstream>
 #include <stdlib.h>
 #include <iostream>
+#include <numeric>
+
 
 #include <q_model_install/Q_state.h>
 #include "robot_teleop_tuner/pid_values.h"
@@ -17,6 +19,7 @@
 #include "controller/PidData.h"
 #include <std_msgs/Int16.h>
 
+#include <deque>
 #include <vector>
 #include <time.h>
 #include <cmath>
@@ -25,8 +28,8 @@
 //uses the gazebo sim model
 #define MODEL_READ 0
 #define EPSILON 0.3
-#define FREQUENCY 10
-#define RL_DELTA 0.1
+#define FREQUENCY 20
+#define RL_DELTA 0.05
 #define STOP_PWM 130
 #define STOP_TORQUE 0
 #define PITCH_FIX 5.5	
@@ -34,7 +37,7 @@
 #define REFERENCE_PITCH 0.0
 #define PITCH_THRESHOLD 15
 #define ACTIONS 7
-
+#define RUNNING_AVG 5
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
 //int actions[ACTIONS] = {-75, -35, -13, 0, 13, 35, 75};	
@@ -49,7 +52,10 @@
 
 //float actions[ACTIONS] =  {-0.643, -0.71, -0.73, 0, 0.73,  0.71, 0.643};
 //float actions[ACTIONS] =  {0.71, 0.73, 0.755, 0, -0.755, -0.73,  -0.71};
-float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
+//float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
+//NOTE: changed to using RPMs for convienence:
+float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
+
 
 
 
@@ -57,14 +63,14 @@ float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms
 #define MAX_EPISODE 120
 
 // 2D state space
-#define STATE_NUM_PHI 9
+#define STATE_NUM_PHI 11
 #define STATE_NUM_PHI_D 11
 
 //T1
 //float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
-float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10};
-float phi_d_states[STATE_NUM_PHI_D] = {-40, -30, -20, -10, -5, 0, 5, 10, 20, 30, 40};
+float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
+float phi_d_states[STATE_NUM_PHI_D] = {-30, -20, -15, -10, -5, 0, 5, 10, 15, 20, 30};
 
 
 
@@ -165,7 +171,9 @@ class reinforcement_learning
     float reward_per_ep;
     ros::NodeHandle n;	//make private? eh..
     ros::Subscriber sub_q;
-	
+    std::deque<float> pitch_dot_data;
+    int running_avg_cntr;
+    float pitch_dot_filtered;	
     reinforcement_learning();
     ~reinforcement_learning();
 
@@ -182,13 +190,14 @@ class reinforcement_learning
     void read_model(void);
     void Q_callback(const q_model_install::Q_state::ConstPtr& q_model);
     int rpm_transform(void);
+    float running_avg_pitch_dot(void);
 };
 reinforcement_learning::reinforcement_learning()
   :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(0.3), alpha(0.4),
      epsilon(EPSILON), pitch_dot(0.0), prev_pitch(0.0),
-     reward_per_ep(0.0)
+     reward_per_ep(0.0), pitch_dot_data(RUNNING_AVG, 0.0), running_avg_cntr(0)
 {
 q_state_publisher = n.advertise<controller::Q_state>("/Q_state", 1000);
 if (MODEL_READ == 1){
@@ -201,6 +210,25 @@ if (MODEL_READ == 1){
 reinforcement_learning::~reinforcement_learning()
 {
 }
+
+float reinforcement_learning::running_avg_pitch_dot(void)
+{
+  if (pitch_dot_data.size() < RUNNING_AVG){
+  pitch_dot_data.push_back(pitch_dot);
+  running_avg_cntr++;
+  }else{  
+   running_avg_cntr = RUNNING_AVG;
+   pitch_dot_data.pop_front();
+   pitch_dot_data.push_back(pitch_dot);
+  }
+  //for(int i = 0; i < RUNNING_AVG; i++)
+   //{ ROS_INFO("%f", pitch_dot_data[i]);
+//	}
+ return (std::accumulate(pitch_dot_data.begin(), pitch_dot_data.end(), 0.0)) / running_avg_cntr;
+
+
+}
+
 
 void reinforcement_learning::Q_callback(const q_model_install::Q_state::ConstPtr& q_model)
 {
@@ -345,15 +373,19 @@ void reinforcement_learning::read_model(void)
 float reinforcement_learning::get_reward(float pitch)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
-  float squared_error_pitch_dot = pow((pitch_dot - 0), 2);
+  float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
 
-  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
+/*  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
+*/
+   if (pitch_dot_filtered < 0 && pitch < REFERENCE_PITCH)
+    squared_error_pitch_dot = -squared_error_pitch_dot;
+  else if (pitch_dot_filtered > 0 && pitch > REFERENCE_PITCH)
+    squared_error_pitch_dot = -squared_error_pitch_dot;
   
-//  return (-squared_error_pitch + squared_error_pitch_dot); 
-  return (-squared_error_pitch);
+  return (-squared_error_pitch + squared_error_pitch_dot + time_steps); 
 }
 
 char reinforcement_learning::choose_action(char)
@@ -708,12 +740,20 @@ int main(int argc, char **argv)
 			  controller.msg.td_update = 0;
 			  controller.msg.td_target = 0;
 			  controller.msg.td_error = 0;
+			
 
 			}
 			restart_delta_prev = restart_delta;
 	   	        pwm_msg.data = STOP_TORQUE;//STOP_PWM;
 		        pwm_command.publish(pwm_msg);
 			controller.motors = false;
+			controller.pitch_dot_data.clear();
+		/*	for (int i = 0; i < RUNNING_AVG; i++)
+			{
+			  controller.pitch_dot_data[i] = 0;
+			}*/
+			controller.running_avg_cntr = 0;
+			//ROS_INFO("cntr contr %d", controller.running_avg_cntr);
 		}
 
 		  // apply control if segway is still in pitch range
@@ -731,7 +771,9 @@ int main(int argc, char **argv)
 			controller.msg.prev_pitch = controller.prev_pitch;
 	
 			// get state of the system
-			state = controller.get_state(controller.pitch, controller.pitch_dot);
+			controller.pitch_dot_filtered = controller.running_avg_pitch_dot();
+			controller.msg.pitch_dot_filtered = controller.pitch_dot_filtered;
+			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
 
 			// debugging data:	
 			ROS_INFO("episode: %d", controller.episode_num);
@@ -739,6 +781,7 @@ int main(int argc, char **argv)
 			ROS_INFO("pitch: %f", controller.pitch);
 			ROS_INFO("pitch prev: %f", controller.prev_pitch);
 		 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
+			ROS_INFO("pitch dot filtered %f", controller.pitch_dot_filtered);
 			ROS_INFO("state: %d", state);
 
 			// first iteration
@@ -754,8 +797,9 @@ int main(int argc, char **argv)
 			  ROS_INFO("action idx %d and action: %f", controller.action_idx, controller.action);	
 			 
 			 // take action (ie. publish action)
-			  pwm_msg.data = controller.rpm_transform();
-			  pwm_command.publish(pwm_msg);
+			 // pwm_msg.data = controller.rpm_transform();
+			pwm_msg.data = controller.action;  
+			pwm_command.publish(pwm_msg);
 
 
 
@@ -791,8 +835,9 @@ int main(int argc, char **argv)
 			  ROS_INFO("action idx %d and action: %f", controller.action_idx, controller.action);	
 			  
 			  // take action (ie. publish action)
-			  pwm_msg.data = controller.rpm_transform();
-			  ROS_INFO("action in RPMS is: %d" ,pwm_msg.data);
+			//  pwm_msg.data = controller.rpm_transform();
+			 // ROS_INFO("action in RPMS is: %d" ,pwm_msg.data);
+			  pwm_msg.data = controller.action;
 			  pwm_command.publish(pwm_msg);
 
 		 	}
