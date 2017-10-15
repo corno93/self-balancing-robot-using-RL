@@ -19,7 +19,7 @@ char WheelController::tick(int actual_rpm, int ref_rpm) {
   fixed_point_t pid_output = this->pid.updatePID(int16_fp(actual_rpm), int16_fp(ref_rpm));
   pid_output = fp_saturate(pid_output, 0x007FFF00);
   int32_t tmp = *(int *)((char *)&pid_output + 1);
-  int motor_cmd = (unsigned char)((tmp / 256) + 126);//was 128 at some point
+  int motor_cmd = (unsigned char)((tmp / 256) + 128);
 
   return motor_cmd;
 }

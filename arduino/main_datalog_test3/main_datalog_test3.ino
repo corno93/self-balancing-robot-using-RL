@@ -20,7 +20,7 @@ unsigned long end_ = 0;
 
 
 //OBJECT INSTANCES
-WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
+WheelController wheelCtrl1(0x0000BF00,0x00000FF0,0x00000350);
 WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
 
 //PID motor2(0,0,0);
@@ -73,6 +73,9 @@ void setup() {
 //   TCCR2B &=~7;    //clear
 //  TCCR2B |= 2;  //set to prescale of 8 (freq 4000Hz)
   TCCR1B = TCCR1B & B11111000 | B00000001; 
+
+
+
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
   
@@ -82,14 +85,15 @@ void setup() {
     analogWrite(M2pin, STOP);
 
     // 5 second delay to let motors come to complete rest
-    //delay(5000);
+   // delay(50000);
     interrupts();
 
-    
+          data_ptr_M1 = (int *) malloc(DATA_LOG_BUFF);
+
     inputString.reserve(200);
 
     // set malloc
-    data_ptr_M1 = (int *) malloc(DATA_LOG_BUFF);
+   // data_ptr_M1 = (int *) malloc(DATA_LOG_BUFF);
   //  data_ptr_M2 = (int *) malloc(DATA_LOG_BUFF);
     data_cntr = 0;
     *(data_ptr_M1+data_cntr) = 9990;
@@ -106,8 +110,6 @@ void loop() {
   int start, end_;
   int n;
 
-
-     //Serial.print(RPM_actual_m1);Serial.print("-");Serial.println(RPM_actual_m2);
 
        if (PID_flag)
      {
@@ -241,15 +243,16 @@ void timer4_interrupt_setup()
   //timer3_counter = 64911;   // preload timer 65536-16MHz/256/100Hz
   //timer3_counter = 3036;    // 3036 gives 0.5Hz ints at 256
   //timer3_counter = 59286;   //10hz ints at 256 prescale
-  timer4_counter = 49911;   //49911: 4hz ints at 256 prescale
+ // timer4_counter = 49911;   //49911: 4hz ints at 256 prescale
   //timer3_counter = 45536;     //100hz at 8 prescale
-  
+    timer4_counter = 55536;     //25hz at 64 prescale
+
   TCNT4 = timer4_counter;   // preload timer
   TCCR4B &=~7; //clear
  // TCCR4B |= (1 << CS11);    //8 prescaler
-  TCCR4B |= (1 << CS12);    // 256 prescaler 
- //TCCR3B |= (1 << CS11);    // 64 prescaler 
- //TCCR3B |= (1 << CS10);    // 64 prescaler 
+ // TCCR4B |= (1 << CS12);    // 256 prescaler 
+ TCCR4B |= (1 << CS11);    // 64 prescaler 
+ TCCR4B |= (1 << CS10);    // 64 prescaler 
   TIMSK4 |= (1 << TOIE4);   // enable timer overflow interrupt
 }
 
@@ -259,7 +262,7 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
 {
 
   TCNT4 = timer4_counter;   // preload timer
-  //digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
+  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
   ISR4_cntr++;
 
   if(ISR4_cntr == CMD_FREQ*1)
@@ -269,13 +272,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     data_cntr++;
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
-<<<<<<< HEAD
     RPM_ref_m1 = 0;
     RPM_ref_m2 = 0;
-=======
-    RPM_ref_m1 = 60;
-    RPM_ref_m2 = 60;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
   }else if (ISR4_cntr == CMD_FREQ*2)
   {
     *(data_ptr_M1+data_cntr) = 9992;
@@ -283,13 +281,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = -1;
-    RPM_ref_m2 = -1;
-=======
-    RPM_ref_m1 = -30;
-    RPM_ref_m2 = -30;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = 30;
+    RPM_ref_m2 = 30;
   }else if (ISR4_cntr == CMD_FREQ*3)
   {
     *(data_ptr_M1+data_cntr) = 9993;
@@ -297,13 +290,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = 5;  //100 rpm doesnt want to work...
-    RPM_ref_m2 = 5;
-=======
-    RPM_ref_m1 = 30;  //100 rpm doesnt want to work...
-    RPM_ref_m2 = 30;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = -10;  //100 rpm doesnt want to work...
+    RPM_ref_m2 = -10;
   }else if (ISR4_cntr == CMD_FREQ*4)
   {
     *(data_ptr_M1+data_cntr) = 9994;
@@ -313,13 +301,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     data_cntr++;
   //  digitalWrite(ledPin, digitalRead(ledPin) ^ 1);  //debugging 
 
-<<<<<<< HEAD
-    RPM_ref_m1 = -10;
-    RPM_ref_m2 = -10;
-=======
-    RPM_ref_m1 = -60;
-    RPM_ref_m2 = -60;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = 15;
+    RPM_ref_m2 = 15;
   }else if(ISR4_cntr == CMD_FREQ*5)
   {
     *(data_ptr_M1+data_cntr) = 9995;
@@ -327,13 +310,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = -2;
-    RPM_ref_m2 = -2;
-=======
-    RPM_ref_m1 = 30;
-    RPM_ref_m2 = 30;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = -45;
+    RPM_ref_m2 = -45;
   }else if(ISR4_cntr == CMD_FREQ*6)
   {
     *(data_ptr_M1+data_cntr) = 9996;
@@ -341,13 +319,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = 5;
-    RPM_ref_m2 = 5;
-=======
-    RPM_ref_m1 = 90;
-    RPM_ref_m2 = 90;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = 10;
+    RPM_ref_m2 = 10;
   }else if(ISR4_cntr == CMD_FREQ*7)
   {
     *(data_ptr_M1+data_cntr) = 9997;
@@ -355,13 +328,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = 10;
-    RPM_ref_m2 = 10;
-=======
-    RPM_ref_m1 = 0;
-    RPM_ref_m2 = 0;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = 60;
+    RPM_ref_m2 = 60;
   }else if(ISR4_cntr == CMD_FREQ*8)
   {
     *(data_ptr_M1+data_cntr) = 9998;
@@ -369,13 +337,8 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-<<<<<<< HEAD
-    RPM_ref_m1 = 15;
-    RPM_ref_m2 = 15;
-=======
-    RPM_ref_m1 = -90;
-    RPM_ref_m2 = -90;
->>>>>>> ab30816eda2f419807274fa8db8db8c6a17f037e
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
     }else if(ISR4_cntr == CMD_FREQ*9)
   {
     *(data_ptr_M1+data_cntr) = 9910;
@@ -383,13 +346,16 @@ ISR(TIMER4_OVF_vect)        // interrupt service routine at 4Hz
     wheelCtrl1.pid.init();
     wheelCtrl2.pid.init();
     data_cntr++;
-    RPM_ref_m1 = 0;
-    RPM_ref_m2 = 0;
+    RPM_ref_m1 = -40;
+    RPM_ref_m2 = -40;
     }else if(ISR4_cntr == CMD_FREQ*10)
   {
     *(data_ptr_M1+data_cntr) = 9900;
   //  *(data_ptr_M2+data_cntr) = 9900;
-
+    RPM_ref_m1 = 0;
+    RPM_ref_m2 = 0;
+    wheelCtrl1.pid.init();
+    wheelCtrl2.pid.init();
 
      //analogWrite(M1pin, STOP);
      //analogWrite(M2pin, STOP);

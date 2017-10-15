@@ -3,11 +3,18 @@
 //#define USBCON //uses Tx1 (see SabertoothSimplified.h)
 #define ledPin 13
 #define IN_BUFF_SIZE 8
-//#include <SabertoothSimplified.h>
+
+#include <ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Int16.h>
+#include <arduino_feedback/feedback.h>
 #include "encoders.h"
 #include "fixedpoint.h"
 #include "PID.h"
 #include "WheelController.h"
+#include <SPI.h>
+
+
 
 #define M1pin 12
 #define M2pin 11
@@ -20,11 +27,8 @@ unsigned long end_ = 0;
 
 
 //OBJECT INSTANCES
-WheelController wheelCtrl1(0x0000BF00,0x00000FF0,0x00000350);
-WheelController wheelCtrl2(0x0000BF00,0x00000FF0,0x00000350);
-//WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
-
-//PID motor2(0,0,0);
+WheelController wheelCtrl1(0x0000BF00, 0x00000FF0, 0x00000350);
+WheelController wheelCtrl2(0x0000BF00, 0x00000FF0, 0x00000350);
 
 
 //INTERRUPT VARIABLES
@@ -50,18 +54,32 @@ boolean stringComplete = false;  // whether the string is complete
 int counter = 0;
 int databuff[IN_BUFF_SIZE];
 
+//CALLBACK FROM /rpm_cmd TOPIC
+void pwm_cmdCb( const std_msgs::Int16& msg){
+  //digitalWrite(13, HIGH-digitalRead(13));   
+  RPM_ref_m1 = msg.data;
+    RPM_ref_m2 = msg.data;
 
-//DATA LOGGING VARIBALES
-int data_cntr;
-int *data_ptr_M1;
-int *data_ptr_M2;
-#define DATA_LOG_BUFF 600
-int ISR4_cntr = 0;
+
+}
+
+ros::NodeHandle  nh;
+std_msgs::String str_msg;
+arduino_feedback::feedback arduino_msg;
+ros::Publisher arduino_chatter("arduino_data", &arduino_msg);
+ros::Subscriber<std_msgs::Int16> sub("pwm_cmd", &pwm_cmdCb );
 
 
 
 void setup() {
-    Serial.begin(9600);      // Serial com for data output
+  
+  
+  nh.initNode();
+  nh.advertise(arduino_chatter);
+  nh.subscribe(sub);
+//  
+  
+  //  Serial.begin(9600);      // Serial com for data output
   //  SabertoothTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
     initEncoders();       //Serial.println("Encoders Initialized...");  
     clearEncoderCount();  //Serial.println("Encoders Cleared...");
@@ -93,24 +111,23 @@ void setup() {
 }
 
 void loop() {
-  fixed_point_t pid_output;
-  unsigned char motor_cmd = 0;
-  int time_elapsed= 0;
-  int start, end_;
-  int n;
+
+  //update rpm reference commands
+
+  arduino_msg.reference_rpm = RPM_ref_m1;
 
 
        if (PID_flag)
      {
+         nh.spinOnce();
+
       //  start = micros();
         PID_flag = false;
 
         analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
         analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+        arduino_chatter.publish( &arduino_msg );
 
-        // time elapsed debug
-    //    end_ = micros() - start;
-        //Serial.println(end_);
         
      }
 
@@ -165,10 +182,12 @@ ISR(TIMER3_OVF_vect)        // main interrupt service routine
 
     ISR3_counter = 0;
     RPM_actual_m1 = (encoder1count*6000)/1920;
-    RPM_actual_m2 = (encoder2count*6000)/1920;
+    RPM_actual_m2 = (encoder2count*6000)/1920;    
+  arduino_msg.encoder1 = encoder1count;
+ arduino_msg.encoder2 = encoder2count;
+arduino_msg.actual_rpm1 = RPM_actual_m1;
+ arduino_msg.actual_rpm2 = RPM_actual_m2;
     
-
-
 
     encoder1count = 0;
     encoder2count = 0;
@@ -179,7 +198,7 @@ ISR(TIMER3_OVF_vect)        // main interrupt service routine
 
 }
 
-
+/*
 void serialEvent() 
 {
   while (Serial.available()) 
@@ -219,6 +238,6 @@ void serialEvent()
   }
 }
 
-
+*/
 
    

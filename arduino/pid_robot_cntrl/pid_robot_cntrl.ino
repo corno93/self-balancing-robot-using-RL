@@ -1,6 +1,8 @@
 /*
- * The main scipt running the speed controller
+ * Raw PID control. (ie, arduino subscribes to topic to receive motor PWM duty value)
+ *                   
  */
+
 
 #include <ros.h>
 #include <std_msgs/String.h>
@@ -21,10 +23,6 @@
 
 char log_msg[50] = {0};
 
-//OBJECT INSTANCES
-WheelController wheelCtrl1(0x00003550,0x00001500,0x00000020);
-WheelController wheelCtrl2(0x00003550,0x00001500,0x00000020);
-
 //INTERRUPT VARIABLES
 int timer3_counter;
 int ISR3_counter=0;
@@ -34,8 +32,8 @@ signed long encoder1count = 0;
 signed long encoder2count = 0;
 
 //PID VARIABLES:
-boolean PID_flag = false;
-int RPM_ref_m1;
+boolean publish_message = false;
+int motor_PWM;
 int RPM_actual_m1;
 int RPM_ref_m2;
 int RPM_actual_m2;
@@ -55,9 +53,9 @@ unsigned long end_ = 0;
 
 //CALLBACK FROM /rpm_cmd TOPIC
 void pwm_cmdCb( const std_msgs::Int16& msg){
-  digitalWrite(13, HIGH-digitalRead(13));   
-  RPM_ref_m1 = msg.data;
-  RPM_ref_m2 = RPM_ref_m1;
+  //digitalWrite(13, HIGH-digitalRead(13));   
+  motor_PWM = msg.data;
+
 }
 
 ros::NodeHandle  nh;
@@ -82,8 +80,7 @@ void setup()
   TCCR1B = TCCR1B & B11111000 | B00000001; 
   pinMode(M1pin, OUTPUT);
   pinMode(M2pin, OUTPUT);
-    RPM_ref_m1 = 0;
-    RPM_ref_m2 = 0;
+
     analogWrite(M1pin, STOP);  
     analogWrite(M2pin, STOP);
     interrupts();
@@ -102,34 +99,36 @@ void loop()
 //  sprintf(log_msg, "loop time in micros is: %d", end_);
 //  nh.loginfo(log_msg);
 //  start = micros();
-  arduino_msg.reference_rpm = RPM_ref_m1;
+  arduino_msg.reference_rpm = motor_PWM;
+  
+  digitalWrite(13, HIGH-digitalRead(13));   
+  analogWrite(M1pin, motor_PWM);
+  analogWrite(M2pin, motor_PWM);
 
   
   // compute PID gains and write to motors when ready
-    if (PID_flag)
+    if (publish_message)
      {
-        PID_flag = false;
-        analogWrite(M1pin, wheelCtrl1.tick(RPM_actual_m1, RPM_ref_m1));
-        analogWrite(M2pin, wheelCtrl2.tick(-RPM_actual_m2, RPM_ref_m2));
+        publish_message = false;
         
         // get averaged ADC values for current in motor's armature
-        for (int i = 0; i < 5; i++)
-        {
-          raw_value_m1 += analogRead(A15);  //analog read takes 100 microseconds (0.0001s)
-          raw_value_m2 += analogRead(A14);
-        }
-        voltage_m1 = ((raw_value_m1 / 5) / 1023)*5000;
-        voltage_m2 = ((raw_value_m2 / 5) / 1023)*5000;
-        amps_m1 = ((voltage_m1 - 2500)/185);
-        amps_m2 = ((voltage_m2 - 2500)/185);
-        raw_value_m1 = 0;
-        raw_value_m2 = 0;  
-        arduino_msg.voltage_1 = voltage_m1;
-        arduino_msg.voltage_2 = voltage_m2;
-        arduino_msg.current_1 = amps_m1;
-        arduino_msg.current_2 = amps_m2;
-        arduino_msg.torque_1 = amps_m1 * KT;
-        arduino_msg.torque_2 = amps_m2 * KT;
+//        for (int i = 0; i < 5; i++)
+//        {
+//          raw_value_m1 += analogRead(A15);  //analog read takes 100 microseconds (0.0001s)
+//          raw_value_m2 += analogRead(A14);
+//        }
+//        voltage_m1 = ((raw_value_m1 / 5) / 1023)*5000;
+//        voltage_m2 = ((raw_value_m2 / 5) / 1023)*5000;
+//        amps_m1 = ((voltage_m1 - 2500)/185);
+//        amps_m2 = ((voltage_m2 - 2500)/185);
+//        raw_value_m1 = 0;
+//        raw_value_m2 = 0;  
+//        arduino_msg.voltage_1 = voltage_m1;
+//        arduino_msg.voltage_2 = voltage_m2;
+//        arduino_msg.current_1 = amps_m1;
+//        arduino_msg.current_2 = amps_m2;
+//        arduino_msg.torque_1 = amps_m1 * KT;
+//        arduino_msg.torque_2 = amps_m2 * KT;
     //    sprintf(log_msg, "current 1: %f", (arduino_msg.current_1));
     //   nh.loginfo(log_msg);
         
@@ -194,7 +193,7 @@ ISR(TIMER3_OVF_vect)        // interrupt service routine at 100Hz
     encoder1count = 0;
     encoder2count = 0;
     clearEncoderCount(); 
-    PID_flag = true;
+    publish_message = true;
 
   }
 

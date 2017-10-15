@@ -4,18 +4,22 @@
 	<node name="i2c_imu_node" pkg="i2c_imu" type="i2c_imu_node" ns="imu" output="screen">
 	</node>
 
-	<node name="control_pid" pkg="controller" type="control"/> 
+	<node name="control_pid" pkg="controller" type="control" output="screen"/> 
 
 	<node name="serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
 		<param name="port" value="/dev/ttyACM0"/>
 		<param name="baud"  value="57600" />
 	</node>
 
-	<node name="pid_tuning" pkg="robot_teleop_tuner" type="pid_tuning.py" output="screen"> 
-	</node>
+<!--	<node name="pid_tuning" pkg="robot_teleop_tuner" type="pid_tuning.py" output="screen"> 
+	</node>-->
 
+
+	<node name="q_install_trial" pkg="q_model_install" type="q_install_trial.py">
+	</node>
 	
 	<node pkg="rosbag" type="record" name="rosbag_record" args="-a -O /home/alex/bagfiles/data.bag" />
+
 
 <!--	<node name="arduino_feedback_node" pkg="arduino_feedback" type="arduino_feedback_node.py" output="screen" />-->	
 
