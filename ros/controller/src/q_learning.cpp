@@ -35,7 +35,7 @@
 #define PITCH_FIX 5.5	
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 12
+#define PITCH_THRESHOLD 11
 #define ACTIONS 5
 #define RUNNING_AVG 3
 
@@ -55,7 +55,7 @@
 //float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
 //NOTE: changed to using RPMs for convienence:
 //float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
-float actions[ACTIONS] =  {-45, -20,  0,  30, 45}; //rpms: 45, 30, 20
+float actions[ACTIONS] =  {-45, -30,  0,  30, 45}; //rpms: 45, 30, 20
 
 
 
@@ -72,7 +72,8 @@ float actions[ACTIONS] =  {-45, -20,  0,  30, 45}; //rpms: 45, 30, 20
 //float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
-float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
+//float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
+float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 //float phi_d_states_high_vel[STATE_NUM_PHI_D] = {-30, -25, -20, -15, 0, 15, 20, 25, 30};
 
 
@@ -89,15 +90,15 @@ class Controller
   		ros::NodeHandle n;	//make private? eh..
 		ros::Subscriber sub_imu;
 		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
-		
+    	
 		//serialPutchar parameter
 		int fd;
-
+		
 		//IMU variables
 		double roll;
 		double pitch;
 		double yaw;
-
+		float pitch_dot_imu;
 		bool motors;
 
 };
@@ -139,6 +140,11 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
 	pitch = pitch*(180/M_PI) - PITCH_FIX;
+	float pitch_dot_imu_rad;
+	pitch_dot_imu_rad = (msg->angular_velocity.x);
+	//ROS_INFO("pitch vel from IMU: %f", pitch_dot_imu_rad*(180/M_PI));
+	pitch_dot_imu = pitch_dot_imu_rad*(180/M_PI);
+
 }		
 
 
@@ -187,7 +193,7 @@ class reinforcement_learning
     void TD_update(char, int, char, float);
     char get_state(float, float);
     //char get_next_state(float,float, char);
-    float get_reward(float);
+    float get_reward(float, float);
     void publishQstate(void);
     void read_model(void);
     void Q_callback(const q_model_install::Q_state::ConstPtr& q_model);
@@ -372,10 +378,11 @@ void reinforcement_learning::read_model(void)
 }
 
 
-float reinforcement_learning::get_reward(float pitch)
+float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
-  float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
+  //float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
+  float squared_error_pitch_dot = pow((pitch_dot_imu - 0), 2);
   float sqrd_err_pitch_d;
   float reward;
 
@@ -741,8 +748,12 @@ int main(int argc, char **argv)
 	while (ros::ok())
 	{
 	  ros::spinOnce(); //update pitch
+	 controller.msg.pitch = controller.pitch;
+  	  controller.msg.pitch_dot = controller.pitch_dot;
+  	  controller.msg.pitch_dot_imu = controller.pitch_dot_imu;	
 
-	
+
+	 
 	  if(std::abs(controller.pitch) < 0.5)
 	  {
 	  	controller.motors = true;
@@ -804,11 +815,14 @@ int main(int argc, char **argv)
 			controller.msg.time_steps = controller.time_steps;
 			controller.msg.error = controller.pitch - REFERENCE_PITCH;
 			controller.msg.prev_pitch = controller.prev_pitch;
-	
+			controller.msg.pitch_dot_imu = controller.pitch_dot_imu;	
+
 			// get state of the system
 			controller.pitch_dot_filtered = controller.running_avg_pitch_dot();
 			controller.msg.pitch_dot_filtered = controller.pitch_dot_filtered;
-			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
+//			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
+			state = controller.get_state(controller.pitch, controller.pitch_dot_imu);
+
 
 			// debugging data:	
 			ROS_INFO("episode: %d", controller.episode_num);
@@ -817,6 +831,9 @@ int main(int argc, char **argv)
 			ROS_INFO("pitch prev: %f", controller.prev_pitch);
 		 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
 			ROS_INFO("pitch dot filtered %f", controller.pitch_dot_filtered);
+			ROS_INFO("pitch dot imu  %f", controller.pitch_dot_imu);
+
+
 			ROS_INFO("state: %d", state);
 
 			// first iteration
@@ -846,7 +863,7 @@ int main(int argc, char **argv)
 			  ROS_INFO("next state: %d", controller.next_state);
 			  
 			  // get reward
-			  reward = controller.get_reward(controller.pitch);
+			  reward = controller.get_reward(controller.pitch, controller.pitch_dot_imu);
 			  controller.msg.reward = reward;
 			  ROS_INFO("reward is %f", reward);	
 
