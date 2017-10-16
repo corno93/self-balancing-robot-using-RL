@@ -37,6 +37,8 @@
 #define REFERENCE_PITCH 0.0
 #define PITCH_THRESHOLD 6.5
 #define ACTIONS 7
+#define ACTIONS_HALF 3
+#define ACTION_BIAS 3
 #define RUNNING_AVG 3
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
@@ -55,7 +57,7 @@
 //float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
 //NOTE: changed to using RPMs for convienence:
 //float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
-float actions[ACTIONS] =  {-45, -30,-10,  0, -10,  30, 45}; //rpms: 45, 30, 20
+float actions[ACTIONS] =  {-45, -30,-15,  0, -15,  30, 45}; //rpms: 45, 30, 20
 
 
 
@@ -384,7 +386,9 @@ float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
   float sqrd_err_pitch_d;
   float reward;
 
-  if (pitch_dot > 0 && pitch < REFERENCE_PITCH)
+//  return (1 - std::exp(pow(pitch - REFERENCE_PITCH,2)));
+
+  /*if (pitch_dot > 0 && pitch < REFERENCE_PITCH)
   {
     sqrd_err_pitch_d = pow((pitch_dot - 0), 2);
     reward = -squared_error_pitch + sqrd_err_pitch_d;
@@ -397,12 +401,15 @@ float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
     reward = -(squared_error_pitch + sqrd_err_pitch_d);
   }
   return reward;
-}
-/*  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
+}*/
+
+  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
-*/
+
+  return (-squared_error_pitch + squared_error_pitch_dot); 
+}
 /*   if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
@@ -670,17 +677,48 @@ char q_learning::choose_action(char curr_state)
   float random_num;
   float max_q;
   int action_choice;
+  char position_bias;
+  char position_lower_bound;
+  char position_upper_bound;
 
   // generate random number to decide whether to explore or exploit
   random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
   ROS_INFO("random num: %f", random_num);
   msg.action_choice = random_num;
-  
+
+  this->q_row = Q[curr_state];
+  std::vector<float> q_row_final;  
+  //pitch position bias
+  if (pitch >= 0)
+  {
+    for (int i = 0; i < 4; i++)
+    {
+//      q_row_final.push_back(q_row[i]);
+    }
+
+    position_bias = ACTION_BIAS;
+    position_lower_bound = ACTION_BIAS;
+    position_upper_bound = ACTIONS;
+  }else{
+   
+   for (int i = 3; i < 7; i++)
+    {
+//      q_row_final.push_back(q_row[i]);
+    }
+
+  position_bias = 0;
+  position_lower_bound = 0;
+  position_upper_bound = ACTION_BIAS + 1;
+ 
+  }
+
+ 
   if (random_num < epsilon)
   {
     //pick randomly
-    random_choice = rand()%ACTIONS;
+    random_choice = rand()%(ACTIONS_HALF) + position_bias;
     ROS_INFO("random action choice: %d", random_choice);
+    ROS_INFO("position bias %d", position_bias);
     msg.random_action = random_choice;
     return random_choice;
   }
@@ -690,12 +728,35 @@ char q_learning::choose_action(char curr_state)
     msg.random_action = 50;
     ROS_INFO("picks best");
     this->q_row = Q[curr_state];
+    ROS_INFO("position lower bound: %d", position_lower_bound);
+    ROS_INFO("position upper bound: %d", position_upper_bound);
+    std::vector<float>::const_iterator first  = q_row.begin() + position_lower_bound;
+    std::vector<float>::const_iterator end  = q_row.begin() + position_upper_bound;
+    std::vector<float> q_row_final(first, end);
+    //std::cout<<q_row_final<<std::endl;
 
-    max_q = *std::max_element(q_row.begin(), q_row.end());
-    ROS_INFO("max_q: %f", max_q);    
-    for (int i = 0; i < q_row.size(); i++)
+    ROS_INFO("1");
+    
+
+
+    for (int i = 0; i < ACTIONS; i ++)
+    {
+      ROS_INFO("q row element %f", q_row[i]);
+    }
+
+
+    for (int i = 0; i < 4; i ++)
+    {
+      ROS_INFO("q row bouned element %f", q_row_final[i]);
+    }
+
+
+
+    max_q = *std::max_element(q_row_final.begin(), q_row_final.end());
+    ROS_INFO("max_q from q row bounded: %f", max_q);    
+    for (int i = 0; i < q_row_final.size(); i++)
       {
-        if (max_q == q_row[i])
+        if (max_q == q_row_final[i])
           {
             max_value_idxs.push_back(i);     
 	  }
@@ -703,15 +764,16 @@ char q_learning::choose_action(char curr_state)
 
     if (max_value_idxs.size() == 1)
       {
-	action_choice = max_value_idxs[0];
+	action_choice = max_value_idxs[0] + position_bias;
 	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
-        max_value_idxs.clear();
+        ROS_INFO("selected action when only one max indx");
+ 	max_value_idxs.clear();
 	return action_choice;
       }
 	else if (max_value_idxs.size() > 1)
       { 
-	ROS_INFO("max_value_dx 0 is: %d", max_value_idxs[0]);
-	action_choice = max_value_idxs[0];
+	ROS_INFO("max_value_dx when multiple max indx is: %d", max_value_idxs[0] + position_bias);
+	action_choice = max_value_idxs[0] + position_bias;
 	max_value_idxs.clear();
 //	ROS_INFO("random choice for repeated bests");
 //	ROS_INFO("size: %d", max_value_idxs.size());
