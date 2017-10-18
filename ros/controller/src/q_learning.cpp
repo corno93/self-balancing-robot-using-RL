@@ -35,8 +35,10 @@
 #define PITCH_FIX 5.5	
 
 #define REFERENCE_PITCH 0.0
-#define PITCH_THRESHOLD 12
-#define ACTIONS 5
+#define PITCH_THRESHOLD 6.5
+#define ACTIONS 7
+#define ACTIONS_HALF 3
+#define ACTION_BIAS 3
 #define RUNNING_AVG 3
 
 //The rpms below equal the following torques (N.m) respectively: { -0.61,-0.7,-0.75,0, 0.75, 0.7, 0.6}...torque of 0 = max(rpm) 
@@ -55,9 +57,7 @@
 //float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
 //NOTE: changed to using RPMs for convienence:
 //float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
-float actions[ACTIONS] =  {-45, -20,  0,  30, 45}; //rpms: 45, 30, 20
-
-
+float actions[ACTIONS] =  {-45, -30,-15,  0, -15,  30, 45}; //rpms: 45, 30, 20
 
 
 
@@ -65,14 +65,15 @@ float actions[ACTIONS] =  {-45, -20,  0,  30, 45}; //rpms: 45, 30, 20
 #define MAX_EPISODE 120
 
 // 2D state space
-#define STATE_NUM_PHI 11
+#define STATE_NUM_PHI 9
 #define STATE_NUM_PHI_D 11
 
 //T1
-//float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
+float phi_states[STATE_NUM_PHI] = {-5, -3.5, -2, -1, 0, 1, 2, 3.5, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
-float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
-float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
+//float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
+//float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
+float phi_d_states[STATE_NUM_PHI_D] = {-4, -3, -2, -1, -0.5,  0, 0.5, 1, 2, 3, 4};
 //float phi_d_states_high_vel[STATE_NUM_PHI_D] = {-30, -25, -20, -15, 0, 15, 20, 25, 30};
 
 
@@ -89,15 +90,15 @@ class Controller
   		ros::NodeHandle n;	//make private? eh..
 		ros::Subscriber sub_imu;
 		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
-		
+    	
 		//serialPutchar parameter
 		int fd;
-
+		
 		//IMU variables
 		double roll;
 		double pitch;
 		double yaw;
-
+		float pitch_dot_imu;
 		bool motors;
 
 };
@@ -139,6 +140,11 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
 	pitch = pitch*(180/M_PI) - PITCH_FIX;
+	float pitch_dot_imu_rad;
+	pitch_dot_imu_rad = (msg->angular_velocity.x);
+	//ROS_INFO("pitch vel from IMU: %f", pitch_dot_imu_rad*(180/M_PI));
+	pitch_dot_imu = pitch_dot_imu_rad*(180/M_PI);
+
 }		
 
 
@@ -187,7 +193,7 @@ class reinforcement_learning
     void TD_update(char, int, char, float);
     char get_state(float, float);
     //char get_next_state(float,float, char);
-    float get_reward(float);
+    float get_reward(float, float);
     void publishQstate(void);
     void read_model(void);
     void Q_callback(const q_model_install::Q_state::ConstPtr& q_model);
@@ -372,14 +378,17 @@ void reinforcement_learning::read_model(void)
 }
 
 
-float reinforcement_learning::get_reward(float pitch)
+float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
-  float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
+  //float squared_error_pitch_dot = pow((pitch_dot_filtered - 0), 2);
+  float squared_error_pitch_dot = pow((pitch_dot_imu - 0), 2);
   float sqrd_err_pitch_d;
   float reward;
 
-  if (pitch_dot > 0 && pitch < REFERENCE_PITCH)
+//  return (1 - std::exp(pow(pitch - REFERENCE_PITCH,2)));
+
+  /*if (pitch_dot > 0 && pitch < REFERENCE_PITCH)
   {
     sqrd_err_pitch_d = pow((pitch_dot - 0), 2);
     reward = -squared_error_pitch + sqrd_err_pitch_d;
@@ -392,12 +401,15 @@ float reinforcement_learning::get_reward(float pitch)
     reward = -(squared_error_pitch + sqrd_err_pitch_d);
   }
   return reward;
-}
-/*  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
+}*/
+
+  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
-*/
+
+  return (-squared_error_pitch + squared_error_pitch_dot); 
+}
 /*   if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
     squared_error_pitch_dot = -squared_error_pitch_dot;
   else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
@@ -665,17 +677,48 @@ char q_learning::choose_action(char curr_state)
   float random_num;
   float max_q;
   int action_choice;
+  char position_bias;
+  char position_lower_bound;
+  char position_upper_bound;
 
   // generate random number to decide whether to explore or exploit
   random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
   ROS_INFO("random num: %f", random_num);
   msg.action_choice = random_num;
-  
+
+  this->q_row = Q[curr_state];
+  std::vector<float> q_row_final;  
+  //pitch position bias
+  if (pitch >= 0)
+  {
+    for (int i = 0; i < 4; i++)
+    {
+//      q_row_final.push_back(q_row[i]);
+    }
+
+    position_bias = ACTION_BIAS;
+    position_lower_bound = ACTION_BIAS;
+    position_upper_bound = ACTIONS;
+  }else{
+   
+   for (int i = 3; i < 7; i++)
+    {
+//      q_row_final.push_back(q_row[i]);
+    }
+
+  position_bias = 0;
+  position_lower_bound = 0;
+  position_upper_bound = ACTION_BIAS + 1;
+ 
+  }
+
+ 
   if (random_num < epsilon)
   {
     //pick randomly
-    random_choice = rand()%ACTIONS;
+    random_choice = rand()%(ACTIONS_HALF) + position_bias;
     ROS_INFO("random action choice: %d", random_choice);
+    ROS_INFO("position bias %d", position_bias);
     msg.random_action = random_choice;
     return random_choice;
   }
@@ -685,12 +728,35 @@ char q_learning::choose_action(char curr_state)
     msg.random_action = 50;
     ROS_INFO("picks best");
     this->q_row = Q[curr_state];
+    ROS_INFO("position lower bound: %d", position_lower_bound);
+    ROS_INFO("position upper bound: %d", position_upper_bound);
+    std::vector<float>::const_iterator first  = q_row.begin() + position_lower_bound;
+    std::vector<float>::const_iterator end  = q_row.begin() + position_upper_bound;
+    std::vector<float> q_row_final(first, end);
+    //std::cout<<q_row_final<<std::endl;
 
-    max_q = *std::max_element(q_row.begin(), q_row.end());
-    ROS_INFO("max_q: %f", max_q);    
-    for (int i = 0; i < q_row.size(); i++)
+    ROS_INFO("1");
+    
+
+
+    for (int i = 0; i < ACTIONS; i ++)
+    {
+      ROS_INFO("q row element %f", q_row[i]);
+    }
+
+
+    for (int i = 0; i < 4; i ++)
+    {
+      ROS_INFO("q row bouned element %f", q_row_final[i]);
+    }
+
+
+
+    max_q = *std::max_element(q_row_final.begin(), q_row_final.end());
+    ROS_INFO("max_q from q row bounded: %f", max_q);    
+    for (int i = 0; i < q_row_final.size(); i++)
       {
-        if (max_q == q_row[i])
+        if (max_q == q_row_final[i])
           {
             max_value_idxs.push_back(i);     
 	  }
@@ -698,15 +764,16 @@ char q_learning::choose_action(char curr_state)
 
     if (max_value_idxs.size() == 1)
       {
-	action_choice = max_value_idxs[0];
+	action_choice = max_value_idxs[0] + position_bias;
 	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
-        max_value_idxs.clear();
+        ROS_INFO("selected action when only one max indx");
+ 	max_value_idxs.clear();
 	return action_choice;
       }
 	else if (max_value_idxs.size() > 1)
       { 
-	ROS_INFO("max_value_dx 0 is: %d", max_value_idxs[0]);
-	action_choice = max_value_idxs[0];
+	ROS_INFO("max_value_dx when multiple max indx is: %d", max_value_idxs[0] + position_bias);
+	action_choice = max_value_idxs[0] + position_bias;
 	max_value_idxs.clear();
 //	ROS_INFO("random choice for repeated bests");
 //	ROS_INFO("size: %d", max_value_idxs.size());
@@ -741,8 +808,12 @@ int main(int argc, char **argv)
 	while (ros::ok())
 	{
 	  ros::spinOnce(); //update pitch
+	 controller.msg.pitch = controller.pitch;
+  	  controller.msg.pitch_dot = controller.pitch_dot;
+  	  controller.msg.pitch_dot_imu = controller.pitch_dot_imu;	
 
-	
+
+	 
 	  if(std::abs(controller.pitch) < 0.5)
 	  {
 	  	controller.motors = true;
@@ -804,11 +875,14 @@ int main(int argc, char **argv)
 			controller.msg.time_steps = controller.time_steps;
 			controller.msg.error = controller.pitch - REFERENCE_PITCH;
 			controller.msg.prev_pitch = controller.prev_pitch;
-	
+			controller.msg.pitch_dot_imu = controller.pitch_dot_imu;	
+
 			// get state of the system
 			controller.pitch_dot_filtered = controller.running_avg_pitch_dot();
 			controller.msg.pitch_dot_filtered = controller.pitch_dot_filtered;
-			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
+//			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
+			state = controller.get_state(controller.pitch, controller.pitch_dot_imu);
+
 
 			// debugging data:	
 			ROS_INFO("episode: %d", controller.episode_num);
@@ -817,6 +891,9 @@ int main(int argc, char **argv)
 			ROS_INFO("pitch prev: %f", controller.prev_pitch);
 		 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
 			ROS_INFO("pitch dot filtered %f", controller.pitch_dot_filtered);
+			ROS_INFO("pitch dot imu  %f", controller.pitch_dot_imu);
+
+
 			ROS_INFO("state: %d", state);
 
 			// first iteration
@@ -846,7 +923,7 @@ int main(int argc, char **argv)
 			  ROS_INFO("next state: %d", controller.next_state);
 			  
 			  // get reward
-			  reward = controller.get_reward(controller.pitch);
+			  reward = controller.get_reward(controller.pitch, controller.pitch_dot_imu);
 			  controller.msg.reward = reward;
 			  ROS_INFO("reward is %f", reward);	
 
