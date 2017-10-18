@@ -1129,7 +1129,7 @@ void GazeboRsvBalance::UpdateChild()
 	  ROS_INFO("SIMULATION COMPLETE AT %d EPISODES", controller.episode_num);
 	  while(1){}
 	}
-
+/*
 	//add disturbances
 	this->disturbance_time = parent_->GetWorld()->GetSimTime();
 	if (this->disturbance_time - this->disturbance_time_prev > 1)
@@ -1147,7 +1147,7 @@ void GazeboRsvBalance::UpdateChild()
 	   this->disturbance_time_prev = this->disturbance_time;
 	   ROS_INFO("DISTURBANCE!!!");
 	}
-
+*/
 
       }	
 
