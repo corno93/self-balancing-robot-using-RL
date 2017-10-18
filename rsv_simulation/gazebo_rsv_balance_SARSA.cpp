@@ -30,7 +30,7 @@
 //char actions[ACTIONS] = {-30,-10,0,10,30};
 char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
 #define WHEEL_RADIUS 0.19
-#define MAX_EPISODE 50
+#define MAX_EPISODE 40
 
 // 2D state space
 #define STATE_NUM_PHI 9
@@ -977,6 +977,8 @@ void GazeboRsvBalance::UpdateChild()
 	}
 
       }	
+		  // publish state data
+  	  this->state_publisher_.publish(controller.msg);
 	
       break;
     case TRACTOR:
