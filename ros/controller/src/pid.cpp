@@ -21,15 +21,15 @@
 #define PID_DELTA 0.01
 #define BAUD_RATE 115200
 
-#define PROP_GAIN 160
+#define PROP_GAIN 0//160
 #define INT_GAIN 0
-#define DERIV_GAIN 0.1
+#define DERIV_GAIN 0 //0.1
 
 #define STOP_PWM 130
 
-#define PITCH_FIX 0
-#define REFERENCE_PITCH 0
-
+#define PITCH_FIX 5.5
+#define REFERENCE_PITCH -1.0
+#define PITCH_THRESHOLD 20
 
 
 
@@ -99,7 +99,7 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	//double roll, pitch, yaw;
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
-	pitch = pitch*(180/M_PI) + PITCH_FIX;
+	pitch = pitch*(180/M_PI) - PITCH_FIX;
 }		
 
 std::string Controller::motor_cmd_generator(int cmd)
@@ -245,9 +245,9 @@ float PID::updatePID()
 	}
 
 
-	error_kp = (errsgn * sqrt(std::abs(error) * kp));
+//	error_kp = (errsgn * sqrt(std::abs(error) * kp));
 //	error_kp = (errsgn * exp(std::abs(error) * kp));	
-//	error_kp = error * kp;
+	error_kp = error * kp;
 	msg.error_proportional = error_kp;
 
 	integral_sum += error * PID_DELTA;
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 		//ROS_INFO("%f", pid.pitch);
 		//pid.pitch_tolerance();
 		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
-		pid.checkReset();
+		//pid.checkReset();
 
 	//	pid_cmd = static_cast<int>(round(pid.updatePID()))/256 + 128;
 		pid_cmd = pid.updatePID() + STOP_PWM;
@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 		//ROS_INFO("pid cmd: %d", pid_cmd);
 		pid.msg.motor_cmd = pid_cmd;	
 	//	std::cout<<"motor cmd: "<<command<<std::endl;
-		if (std::abs(pid.pitch) > 5)
+		if (std::abs(pid.pitch) > PITCH_THRESHOLD)
 		{
 			pwm_msg.data = STOP_PWM;
 		}else{

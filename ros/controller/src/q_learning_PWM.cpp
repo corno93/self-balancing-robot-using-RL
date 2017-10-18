@@ -27,19 +27,18 @@
 
 //uses the gazebo sim model
 #define MODEL_READ 0
-#define EPSILON 0.6
-#define ALPHA 0.6
-#define GAMMA 0.6
+#define EPSILON 0.3
+#define ALPHA 0.4
+#define GAMMA 0.3
 
-#define FREQUENCY 25
-#define RL_DELTA 0.04
+#define FREQUENCY 100
+#define RL_DELTA 0.05
 #define STOP_PWM 130
 #define STOP_TORQUE 0
+#define PITCH_FIX 6.5	
 
-#define PITCH_FIX 5.5
-#define REFERENCE_PITCH -1.0
-
-#define PITCH_THRESHOLD 6.5
+#define REFERENCE_PITCH 0.0
+#define PITCH_THRESHOLD 5
 #define ACTIONS 7
 #define ACTIONS_HALF 3
 #define ACTION_BIAS 3
@@ -61,24 +60,24 @@
 //float actions[ACTIONS] =  {0.676, 0.71, 0.73,  0, -0.73,  -0.71, -0.676}; //rpms: 45, 30, 20
 //NOTE: changed to using RPMs for convienence:
 //float actions[ACTIONS] =  {-45, -30, -20,  0, 20,  30, 45}; //rpms: 45, 30, 20
-float actions[ACTIONS] =  {-45, -30,-15,  0, 15,  30, 45}; //rpms: 45, 30, 20
-//float actions[ACTIONS] =  {145, 140, 135, 130,  125, 120,  115}; 
+//float actions[ACTIONS] =  {-45, -30,-15,  0, -15,  30, 45}; //rpms: 45, 30, 20
+float actions[ACTIONS] =  {115, 120, 125, 130,  135, 140,  145}; 
+
 
 #define WHEEL_RADIUS 0.19
-#define MAX_EPISODE 150
+#define MAX_EPISODE 120
 
 // 2D state space
-#define STATE_NUM_PHI 11
+#define STATE_NUM_PHI 9
 #define STATE_NUM_PHI_D 11
 
 //T1
-float phi_states[STATE_NUM_PHI] = {-5, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 5};
+float phi_states[STATE_NUM_PHI] = {-3, -2, -1 -0.5, 0, 0.5, 1, 2, 3};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 //float phi_states[STATE_NUM_PHI] = {-10, -7.5, -5, -2.5,-1, 0, 1, 2.5, 5, 7.5, 10};
 //float phi_d_states[STATE_NUM_PHI_D] = {-15, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 15};
-//float phi_d_states[STATE_NUM_PHI_D] = {-4, -3, -2, -1, -0.5,  0, 0.5, 1, 2, 3, 4};
+float phi_d_states[STATE_NUM_PHI_D] = {-4, -3, -2, -1, -0.5,  0, 0.5, 1, 2, 3, 4};
 //float phi_d_states_high_vel[STATE_NUM_PHI_D] = {-30, -25, -20, -15, 0, 15, 20, 25, 30};
-float phi_d_states[STATE_NUM_PHI_D] = {-2, -1.5, -1, -0.6, -0.2,  0, 0.2, 0.6, 1, 1.5, 2};
 
 
 class Controller
@@ -381,29 +380,7 @@ void reinforcement_learning::read_model(void)
 	sub_q = n.subscribe("/q_installer", 1000, &reinforcement_learning::Q_callback, this);
 }
 
-float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
-{
-  float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
-  //float squared_error_pitch_dot = pow((pitch_dot_imu - 0), 2);
-  float reward_sgn;
-  
-  if (std::abs(prev_pitch) < std::abs(pitch))
-  {
-    reward_sgn = -1.0;
-  }else{
-    reward_sgn = 1.0;
-  }
-  return (reward_sgn * squared_error_pitch);
-}
-  /*
-  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
-  else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
 
-  return (-squared_error_pitch + squared_error_pitch_dot);
-}*/
-/*
 float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
@@ -428,16 +405,6 @@ float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
   }
   return reward;
 }
-
-  if (pitch_dot < 0 && pitch < REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
-  else if (pitch_dot > 0 && pitch > REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
-
-  return (-squared_error_pitch + squared_error_pitch_dot); 
-}*/
-
-
 
 char reinforcement_learning::choose_action(char)
 {
@@ -483,27 +450,25 @@ int reinforcement_learning::rpm_transform(void){
 }
 
 
-char reinforcement_learning::get_state(float pitch_, float pitch_dot_)
+char reinforcement_learning::get_state(float pitch, float pitch_dot)
 {
-  int i, j;
+  char i, j;
   i = 0;
   j = 0;
 
-  for (int phi_idx = 0; phi_idx < STATE_NUM_PHI; phi_idx++)
+  for (char phi_idx = 0; phi_idx < STATE_NUM_PHI; phi_idx++)
   {
-    ROS_INFO("vals %f", phi_states[phi_idx]);
-    if (pitch_ <= phi_states[phi_idx])
+    if (pitch <= phi_states[phi_idx])
     {
       i = phi_idx;
       break;
-    }else if (pitch_ > phi_states[STATE_NUM_PHI - 1])
+    }else if (pitch > phi_states[STATE_NUM_PHI - 1])
     {
       i = STATE_NUM_PHI;
-      ROS_INFO("yooo %d", i);
       break;
      }
    }
-   ROS_INFO("phi bound: %f and index: %d", phi_states[i], i);
+
 
 /*  if (std::abs(pitch) > 7.5)
   {
@@ -521,22 +486,19 @@ char reinforcement_learning::get_state(float pitch_, float pitch_dot_)
       }
   }else{
 */
-  for (int phi_d_idx = 0; phi_d_idx < STATE_NUM_PHI_D; phi_d_idx++)
+  for (char phi_d_idx = 0; phi_d_idx < STATE_NUM_PHI_D; phi_d_idx++)
   {
-    if (pitch_dot_ <= phi_d_states[phi_d_idx])
+    if (pitch_dot <= phi_d_states[phi_d_idx])
     {
       j = phi_d_idx;
       break;
-    }else if (pitch_dot_ > phi_d_states[STATE_NUM_PHI_D - 1])
+    }else if (pitch_dot > phi_d_states[STATE_NUM_PHI_D - 1])
     {
       j = STATE_NUM_PHI_D;
       break;
     }
  }
  //}
-
-
-  ROS_INFO("phi dot bound: %f and index %d", phi_d_states[j], j);
   return( j + (STATE_NUM_PHI_D + 1) * i);
 }
 
@@ -867,7 +829,7 @@ int main(int argc, char **argv)
 
 			}
 			restart_delta_prev = restart_delta;
-	   	        pwm_msg.data = STOP_TORQUE;//STOP_PWM;
+	   	        pwm_msg.data = STOP_PWM;
 		        pwm_command.publish(pwm_msg);
 			controller.motors = false;
 			controller.pitch_dot_data.clear();
