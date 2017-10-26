@@ -26,13 +26,13 @@
 #include <algorithm>
 
 //uses the gazebo sim model
-#define MODEL_READ 1
-#define EPSILON 0.6
+#define MODEL_READ 0
+#define EPSILON 0.3
 #define ALPHA 0.6
 #define GAMMA 0.6
 
-#define FREQUENCY 25
-#define RL_DELTA 0.04
+#define FREQUENCY 15
+#define RL_DELTA 0.067
 #define STOP_PWM 130
 #define STOP_TORQUE 0
 
@@ -70,7 +70,7 @@ float actions[ACTIONS] =  {-45, -30,-15,  0, 15,  30, 45}; //rpms: 45, 30, 20
 // 2D state space
 #define STATE_NUM_PHI 11
 #define STATE_NUM_PHI_D 11
-
+#define STATE_NUM_ACCEL 9
 //T1
 float phi_states[STATE_NUM_PHI] = {-5, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
@@ -79,7 +79,7 @@ float phi_states[STATE_NUM_PHI] = {-5, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 5};
 //float phi_d_states[STATE_NUM_PHI_D] = {-4, -3, -2, -1, -0.5,  0, 0.5, 1, 2, 3, 4};
 //float phi_d_states_high_vel[STATE_NUM_PHI_D] = {-30, -25, -20, -15, 0, 15, 20, 25, 30};
 float phi_d_states[STATE_NUM_PHI_D] = {-2, -1.5, -1, -0.6, -0.2,  0, 0.2, 0.6, 1, 1.5, 2};
-
+float linear_accel_states[STATE_NUM_ACCEL] = {-2,-1.5, -1,-0.5, 0,0.5, 1,1.5, 2};
 
 class Controller
 {
@@ -104,6 +104,7 @@ class Controller
 		double yaw;
 		float pitch_dot_imu;
 		bool motors;
+		double linear_accel;
 
 };
 
@@ -148,7 +149,7 @@ void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 	pitch_dot_imu_rad = (msg->angular_velocity.x);
 	//ROS_INFO("pitch vel from IMU: %f", pitch_dot_imu_rad*(180/M_PI));
 	pitch_dot_imu = -pitch_dot_imu_rad*(180/M_PI);
-
+	linear_accel = msg->linear_acceleration.x;
 }		
 
 
@@ -195,7 +196,7 @@ class reinforcement_learning
 
     char virtual choose_action(char) = 0;
     void TD_update(char, int, char, float);
-    char get_state(float, float);
+    char get_state(float, float, float);
     //char get_next_state(float,float, char);
     float get_reward(float, float);
     void publishQstate(void);
@@ -205,7 +206,7 @@ class reinforcement_learning
     float running_avg_pitch_dot(void);
 };
 reinforcement_learning::reinforcement_learning()
-  :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1), std::vector<float>(ACTIONS,0)), 
+  :  Q((STATE_NUM_PHI+1)*(STATE_NUM_PHI_D+1)*(STATE_NUM_ACCEL + 1), std::vector<float>(ACTIONS,0)), 
      episode_num(0), time_steps(0), wins(0),
      loses(0), discount_factor(GAMMA), alpha(ALPHA),
      epsilon(EPSILON), pitch_dot(0.0), prev_pitch(0.0),
@@ -385,15 +386,24 @@ float reinforcement_learning::get_reward(float pitch, float pitch_dot_imu)
 {
   float squared_error_pitch = pow((pitch - REFERENCE_PITCH),2);
   float squared_error_pitch_dot = pow((pitch_dot_imu - 0), 2);
- float reward_sgn;
-  if (pitch_dot_imu < 0 && pitch < REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
-  else if (pitch_dot_imu > 0 && pitch > REFERENCE_PITCH)
-    squared_error_pitch_dot = -squared_error_pitch_dot;
+  
+ /* if (std::abs(pitch) < std::abs(prev_pitch))
+  {
+    return (std::exp(pow(pitch - REFERENCE_PITCH,2)));
+  }else{
+  return (1 - std::exp(pow(pitch - REFERENCE_PITCH,2)));
+  }
+*/
 
+ float reward_sgn;
+  if (pitch_dot_imu < 0 && pitch < REFERENCE_PITCH){
+    squared_error_pitch_dot = -squared_error_pitch_dot;}
+  else if (pitch_dot_imu > 0 && pitch > REFERENCE_PITCH)
+    {squared_error_pitch_dot = -squared_error_pitch_dot;
+   }
   return (-squared_error_pitch + squared_error_pitch_dot);
 
-  return (1 - std::exp(pow(pitch - REFERENCE_PITCH,2)));
+ // return (1 - std::exp(pow(pitch - REFERENCE_PITCH,2)));
 
 
 
@@ -489,11 +499,12 @@ int reinforcement_learning::rpm_transform(void){
 }
 
 
-char reinforcement_learning::get_state(float pitch_, float pitch_dot_)
+char reinforcement_learning::get_state(float pitch_, float pitch_dot_, float linear_accel_)
 {
-  int i, j;
+  int i, j,k;
   i = 0;
   j = 0;
+  k = 0;
 
   for (int phi_idx = 0; phi_idx < STATE_NUM_PHI; phi_idx++)
   {
@@ -539,11 +550,24 @@ char reinforcement_learning::get_state(float pitch_, float pitch_dot_)
       break;
     }
  }
- //}
 
+  for (int accel_idx = 0; accel_idx < STATE_NUM_ACCEL; accel_idx++)
+  {
+    if (linear_accel_ <= linear_accel_states[accel_idx])
+   {
+    k = accel_idx;
+    break;
+   }
+  else if (linear_accel_ > linear_accel_states[STATE_NUM_ACCEL - 1])
+   {
+    k = STATE_NUM_ACCEL;
+    break;
+   }
+  }
+  std::cout<<"i:"<<i<<"j:"<<j<<"k:"<<k<<std::endl;
+  return (k + (j * STATE_NUM_PHI_D) + (i * STATE_NUM_PHI));
 
-  ROS_INFO("phi dot bound: %f and index %d", phi_d_states[j], j);
-  return( j + (STATE_NUM_PHI_D + 1) * i);
+  //return( j + (STATE_NUM_PHI_D + 1) * i);
 }
 
 
@@ -904,7 +928,7 @@ int main(int argc, char **argv)
 			controller.pitch_dot_filtered = controller.running_avg_pitch_dot();
 			controller.msg.pitch_dot_filtered = controller.pitch_dot_filtered;
 //			state = controller.get_state(controller.pitch, controller.pitch_dot_filtered);
-			state = controller.get_state(controller.pitch, controller.pitch_dot_imu);
+			state = controller.get_state(controller.pitch, controller.pitch_dot_imu, controller.linear_accel);
 
 
 			// debugging data:	
@@ -915,9 +939,10 @@ int main(int argc, char **argv)
 		 	ROS_INFO("pitch dot: %f", controller.pitch_dot);
 			ROS_INFO("pitch dot filtered %f", controller.pitch_dot_filtered);
 			ROS_INFO("pitch dot imu  %f", controller.pitch_dot_imu);
-
+			ROS_INFO("linear accel imu %f",controller.linear_accel);
 
 			ROS_INFO("state: %d", state);
+			controller.msg.linear_accel = controller.linear_accel;
 
 			// first iteration
 			if (controller.time_steps < 1)

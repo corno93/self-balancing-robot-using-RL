@@ -26,6 +26,7 @@ float64 pitch
 float64 pitch_dot
 float64 pitch_dot_filtered
 float64 pitch_dot_imu
+float64 linear_accel
 int16 action
 float64 reward
 float64 reward_per_ep

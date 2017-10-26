@@ -159,7 +159,10 @@ include_directories(
 
 #add_executable(control src/speed_cntrl_tuner.cpp)
 #add_executable(control src/pid.cpp)
-add_executable(control src/q_learning.cpp)
+#add_executable(control src/q_learning.cpp)
+add_executable(control src/q_learning_accel.cpp)
+
+#
 #add_executable(control src/q_learning_PWM.cpp)
 add_dependencies(control motors_generate_messages_cpp wiringPi)
 

@@ -21,14 +21,14 @@
 #define PID_DELTA 0.01
 #define BAUD_RATE 115200
 
-#define PROP_GAIN 0//160
+#define PROP_GAIN 10//10//160
 #define INT_GAIN 0
-#define DERIV_GAIN 0 //0.1
+#define DERIV_GAIN 0.1 //0.1
 
 #define STOP_PWM 130
 
 #define PITCH_FIX 5.5
-#define REFERENCE_PITCH -1.0
+#define REFERENCE_PITCH 1.0
 #define PITCH_THRESHOLD 20
 
 
