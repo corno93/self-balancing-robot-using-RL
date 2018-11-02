@@ -8,13 +8,14 @@ Please see the directory rl_code. There are installation and build instructions.
 
 - **Gazebo simulation**:
 Here the RL algorithms are compared against the traditional PID algorithm in achieving balance for a two-wheeled robot in simulation of a two-wheeled robot. Courtesy of [RoboSavvy](http://wiki.ros.org/Robots/RoboSavvy-Balance), this open-sourced simulation uses the ROS interface in a Gazebo simulation of a two-wheeled robot. Comparisons are made between each algorithm by testing their preromance for the following:
-- Terrain test. The simulation provides a flat and a rocky terrain environment.
-- Robustness test. A large disturbance force is inputted onto the chassis.
-- Adaptability test. The simulated robot will have a significant change in its mass and weigth distribution. 
-Please the the directory XXX.
+    - Terrain test. The simulation provides a flat and a rocky terrain environment.
+    - Robustness test. A large disturbance force is inputted onto the chassis.
+    - Adaptability test. The simulated robot will have a significant change in its mass and weigth distribution. 
+Please see the directory XXX.
 
 - **Robot**:
 Now the algorithms are finally tested on the built robot. 
+Please see directories arduino and ros. 
 
 
 All code has been written in C++ with exception of a few python scripts. 
