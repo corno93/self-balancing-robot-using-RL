@@ -1,3 +1,15 @@
+/**
+	This script is the high level PID control loop. 
+	From subscribing to the imu/data topic the error in the robot's pitch angle is found and a PID gain to compensate
+	is computed. This value is published onto the rpm_cmd topic which is then handled by the speed controller.
+
+	This script also subscribes to the pid_tuner topic where users can enter floats for each P,I and D gain variable. 
+
+	@author Alex Cornelio
+
+*/
+
+
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <stdio.h>
@@ -13,26 +25,30 @@
 
 #include "robot_teleop_tuner/pid_values.h"
 #include "arduino_feedback/feedback.h"
-
 #include "controller/PidData.h"
 #include <std_msgs/Int16.h>
 
+// set frequency in Hz and time difference for the PID sampling rate
 #define FREQUENCY 100
 #define PID_DELTA 0.01
-#define BAUD_RATE 115200
 
-#define PROP_GAIN 10//10//160
-#define INT_GAIN 0
-#define DERIV_GAIN 0.1 //0.1
+// set gains
+#define PROP_GAIN 10
+#define INT_GAIN 0.3
+#define DERIV_GAIN 0.1 
 
-#define STOP_PWM 130
+#define STOP_PWM 128
+#define REFERENCE_PITCH 0
 
-#define PITCH_FIX 5.5
-#define REFERENCE_PITCH 1.0
+// fix imu angled offset
+#define PITCH_FIX 5.5 
+// maximum pitch angle for the robot to stop
 #define PITCH_THRESHOLD 20
 
 
-
+/**
+	Class encapsulates basic functionality for all controllers
+*/
 class Controller
 {
 
@@ -40,22 +56,17 @@ class Controller
 		Controller();
 		~Controller();
 		void init();
-		void write_serial_command(std::string const& command);
-		std::string motor_cmd_generator(int);
-		void pitch_tolerance();
 
-		//ros stuff (subscribe to IMU data topic)	
-  		ros::NodeHandle n;	//make private? eh..
+		//ros stuff
+  		ros::NodeHandle n;	
 		ros::Subscriber sub_imu;
 		void IMU_callback(const sensor_msgs::Imu::ConstPtr& msg);
-		
-		//serialPutchar parameter
-		int fd;
 
 		//IMU variables
 		double roll;
 		double pitch;
 		double yaw;
+		double pitch_dot;
 
 		//Other
 		int episodes;
@@ -63,7 +74,9 @@ class Controller
 };
 
 
-
+/**
+	Constructor, initalise variables and subscribe to imu topic
+*/
 Controller::Controller()
 	:	roll(0.0)
 	    ,	pitch(0.0)
@@ -71,81 +84,34 @@ Controller::Controller()
 	    ,   episodes(0)
 	    ,   time_steps(0)
 {
-	//Ros Init (subscribe to IMU topic)
 	sub_imu = n.subscribe("imu/data", 1000, &Controller::IMU_callback, this);
-	//Serial Init
-/*	if ((fd = serialOpen("/dev/ttyACM0",BAUD_RATE))<0)
-	{
-		ROS_INFO("Unable to open serial device");
-	}	
-	if (wiringPiSetup() == -1)
-	{
-		ROS_INFO("Unable to start wiringPi");
-	}*/
 }
 
+/**
+	Destructor
+*/
 Controller::~Controller()
 {
 	ROS_INFO("Deleting node");
 }
 
-
+/**
+	Transform the msg from the imu topic to a pitch in degrees, minusing any offset in the imu. Also get angluar velocity
+*/
 void Controller::IMU_callback(const sensor_msgs::Imu::ConstPtr& msg)
 {
-//	ROS_INFO("IMU Seq: [%d]", msg->header.seq);
-//	ROS_INFO("IMU orientation x: [%f], y: [%f], z: [%f], w: [%f]", msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
-	
+
 	tf::Quaternion q(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
-	//double roll, pitch, yaw;
 	tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-	//ROS_INFO("the pitch in the callback is: %f", pitch*(180/M_PI));
 	pitch = pitch*(180/M_PI) - PITCH_FIX;
+	pitch_dot_imu_rad = (msg->angular_velocity.x);
+	pitch_dot = -pitch_dot_imu_rad*(180/M_PI);
 }		
 
-std::string Controller::motor_cmd_generator(int cmd)
-{
-	std::string m1, m2, result;
-	int cmd_abs = std::abs(cmd);
-	if (cmd_abs >= 100)
-	{	
-		//m1 = patch::to_string(cmd_abs);
-//TODO: boost vs string stream...who preforms best?!		
-		m1 = '0';//boost::lexical_cast<std::string>(cmd);
-		m2 = m1;
-	} else if (cmd_abs >= 10)
-	{
-		m1 = "0";// patch::to_string(cmd_abs);
-		m2 = m1;
-	} else if (cmd_abs >= 0)
-	{
-		m1 = "00"; //+ patch::to_string(cmd_abs);
-		m2 = m1;
-	}
-	if (cmd > 0)
-	{
-		result = "+" + m1 + "+" + m2;
-	}else
-	{
-		result = "-" + m1 + "-" + m2;
-	}
-	return result;
 
-}
-
-void Controller::write_serial_command(std::string const& command)
-{
-	fflush(stdout);
-	serialPuts(fd, command.c_str());	
-}
-
-void Controller::pitch_tolerance()
-{
-	if (std::abs(pitch) < 0.5)
-	{
-		pitch = 0.0;
-	}
-}
-
+/**
+	PID class encapsulates all required for the PID algorithm, and is derived from the controller class. 
+*/
 class PID : public Controller
 {
 	public:
@@ -176,9 +142,12 @@ class PID : public Controller
 	void pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input);
 	void encoder_callback(const arduino_feedback::feedback::ConstPtr& encoder_counts);
 	float saturateIntSum(float);
-	void checkReset(void);
 };
 
+/**
+	Constructor
+	Store P, I, D gains, initalise, subscribe to the pid tuner and arduino data topics
+*/
 PID::PID(float kp_, float ki_, float kd_):
 	pitch_ref(0), kvp(0.1)
 {
@@ -191,6 +160,9 @@ PID::PID(float kp_, float ki_, float kd_):
 	sub_arduino_data = n.subscribe("/arduino_data", 1000, &PID::encoder_callback, this);
 }
 
+/**
+	Overwrite P, I, D and Vp variables from user using the robot_teleop_tuner
+*/
 void PID::pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input)
 {
     kp = pid_input->p;
@@ -199,6 +171,9 @@ void PID::pid_callback(const robot_teleop_tuner::pid_values::ConstPtr& pid_input
     kvp = pid_input->pv;
 }
 
+/**
+	Record encoder counters and actual rpms of each motor
+*/
 void PID::encoder_callback(const arduino_feedback::feedback::ConstPtr& encoder_counts)
 {
    encoder_1 = encoder_counts->encoder1;
@@ -206,15 +181,21 @@ void PID::encoder_callback(const arduino_feedback::feedback::ConstPtr& encoder_c
    rpm1 = encoder_counts->actual_rpm1;
    rpm2 = encoder_counts->actual_rpm2;
    ROS_INFO("rpm 1 %f", rpm1);
-    ROS_INFO("rpm 2 %f", rpm2);
+   ROS_INFO("rpm 2 %f", rpm2);
  
 }
 
+/**
+	Destructor
+*/
 PID::~PID()
 {
 	ROS_INFO("PID node destroyed");
 }
 
+/**
+	Initalise PID algorithm 
+*/
 void PID::init()
 {
 	error_prev = 0;
@@ -222,40 +203,29 @@ void PID::init()
 }
 
 
-void PID::checkReset()
-{
-	if (std::abs(pitch) < 0.15)
-	{
-	  this->init();
-	}
-}
-
+/**
+	Compute the PID gains.
+*/
 float PID::updatePID()
 {
 	float error,error_v, error_kvp, error_kp, error_ki, error_kd, derivative, pid_cmd;
 	
-	error = pitch - REFERENCE_PITCH;//pitch_ref;//pitch_ref - pitch;
+	// error
+	error = pitch - REFERENCE_PITCH;
 	msg.error = error;
 
-	float errsgn = 0.0;
-	if (error < 0.0) {
-		errsgn = -1.0;
-	} else {
-		errsgn = 1.0;
-	}
-
-
-//	error_kp = (errsgn * sqrt(std::abs(error) * kp));
-//	error_kp = (errsgn * exp(std::abs(error) * kp));	
+	// proportional gain
 	error_kp = error * kp;
 	msg.error_proportional = error_kp;
 
+	// integral gain
 	integral_sum += error * PID_DELTA;
 	integral_sum = saturateIntSum(integral_sum);
 	error_ki = integral_sum * ki;
 	msg.integral_sum = integral_sum;
 	msg.error_integral = error_ki;
 
+	// derivative gain
 	derivative = (error - error_prev)/PID_DELTA;
 	error_kd = derivative * kd;
 	msg.derivative = derivative;
@@ -263,21 +233,21 @@ float PID::updatePID()
 	msg.error_prev = error_prev;
 	error_prev = error;
 
-	error_v = (rpm1 - rpm2) / 2;
-	
-	error_kvp = error_v * kvp;
-	error_kvp = 0;
-	
-	msg.error_kvp = error_kvp;	//error_kvp may have to be negative to add to other gain parameters for coorect feedback direction
-	msg.error_v = error_v;
-
-
+	// velocity gain - experimental
+	// error_v = (rpm1 - rpm2) / 2;	
+	// error_kvp = error_v * kvp;
+	// error_kvp = 0;
+	// msg.error_kvp = error_kvp;	
+	// msg.error_v = error_v;
 	
 	pid_cmd = (error_kp + error_ki + error_kd);// + error_kvp);
 	msg.pid_cmd = pid_cmd;	
 	return pid_cmd;
 }
 
+/**
+	Saturate PID command if its over 255 or below 1
+*/
 int PID::saturate(int pid_cmd)
 {
 	if (pid_cmd >= 255)
@@ -290,6 +260,9 @@ int PID::saturate(int pid_cmd)
 	return pid_cmd;
 }
 
+/**
+	Saturate the integral sum if its too high. 
+*/
 float PID::saturateIntSum(float integral_sum)
 {
 	if (integral_sum > 50)
@@ -302,50 +275,49 @@ float PID::saturateIntSum(float integral_sum)
 	}
 	return integral_sum;
 }
+
+
+/**
+	Main function
+*/
 int main(int argc, char **argv)
 {
+	// config ros initalisation, freq and topics
 	ros::init(argc, argv, "control");
-
 	ros::NodeHandle n;
 	ros::Rate loop_rate(FREQUENCY); 
-
 	ros::Publisher pid_data = n.advertise<controller::PidData>("/pid_data", 1000);
 	ros::Publisher pwm_command = n.advertise<std_msgs::Int16>("/pwm_cmd", 1000);
 
 	PID pid(PROP_GAIN,INT_GAIN,DERIV_GAIN);
-
-	std::string command;
-        std_msgs::Int16 pwm_msg;
-	
 	int pid_cmd;
-
+	std::string command;
+    std_msgs::Int16 pwm_msg;
+	
+	// loop until stopped
 	while (ros::ok())
 	{
-		ros::spinOnce(); //update pitch
+		//update pitch
+		ros::spinOnce(); 
 
 		pid.time_steps++;
 		pid.msg.time_steps = pid.time_steps;
 
-		//ROS_INFO("%f", pid.pitch);
-		//pid.pitch_tolerance();
-		//ROS_INFO("pitch after tolerance: %f", pid.pitch);	
-		//pid.checkReset();
-
-	//	pid_cmd = static_cast<int>(round(pid.updatePID()))/256 + 128;
+		// compute new pid command and send to topic
 		pid_cmd = pid.updatePID() + STOP_PWM;
 		pid_cmd = pid.saturate(pid_cmd);
-		//ROS_INFO("pid cmd: %d", pid_cmd);
 		pid.msg.motor_cmd = pid_cmd;	
-	//	std::cout<<"motor cmd: "<<command<<std::endl;
+
+		// stop the robot once its passed an large angle, just so it does not destroy itself
 		if (std::abs(pid.pitch) > PITCH_THRESHOLD)
 		{
 			pwm_msg.data = STOP_PWM;
 		}else{
-		pwm_msg.data = pid_cmd;
+			pwm_msg.data = pid_cmd;
 		}
-		pwm_command.publish(pwm_msg);
-	//	pid.write_serial_command(command);
 
+		// publish messages
+		pwm_command.publish(pwm_msg);
 		pid_data.publish(pid.msg);
 
 		loop_rate.sleep();
