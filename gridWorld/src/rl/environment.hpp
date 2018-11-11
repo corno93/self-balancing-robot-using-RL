@@ -1,15 +1,23 @@
+/**
+	Environment class declaration
+	@author Alex Cornelio
+*/
+
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
 #include <vector>
 
 
+/**
+	Base class with an interface for all todo with all implemented environments. 
+*/
 class environment
 {
 public:
 
-    environment();  //constructor
-    ~environment(); //deconstructor
+    environment();  
+    ~environment();
 
     virtual std::vector<bool> available_actions(char s) = 0;
     virtual char take_action(char action, char current_state) = 0;

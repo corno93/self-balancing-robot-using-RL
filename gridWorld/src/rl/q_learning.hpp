@@ -1,7 +1,12 @@
+/**
+	Q-Learning class declaration
+	@author Alex Cornelio
+*/
+
 #ifndef Q_LEARNING_H
 #define Q_LEARNING_H
 
-#include "reinforcement_learning.h"
+#include "rl.hpp"
 #include <iostream>
 #include <stdlib.h>
 #include <cmath>

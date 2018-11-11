@@ -1,24 +1,35 @@
-#include "q_learning.h"
-#include "environment.h"
 
+/**
+    Q-Learning algorithm methods
+    @author Alex Cornelio
+*/
 
+#include "q_learning.hpp"
+#include "environment.hpp"
 
 #include <algorithm>
 
-q_learning::q_learning()//float ep)
-  //  :epsilon(ep)
+/**
+    Constructor
+*/
+q_learning::q_learning()
 {
-   // q_learning.epsilon = epsilon;
 }
 
+/**
+    Desctructor
+*/
 q_learning::~q_learning()
 {
-
 }
 
 
-
-char q_learning::choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> q_row)
+/**
+    Choose an action. 
+    The agent will explore, meaning it will choose a random legal action is a generated random number is less than epsilon. 
+    The agent will exploit, meaning it will choose the best action based on its learnt Q matrix.
+*/
+char q_learning::chooseAction(float epsilon, std::vector<bool> available_actions, std::vector<float> q_row)
 {
     float random_num;
     int random_choice, random_action;
@@ -35,6 +46,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
         }
     }
 
+    // explore or exploit
     random_num = fabs((rand()/(float)(RAND_MAX + 1))); //produce random positive float between 0 and 1
     if (random_num < epsilon)
     {
@@ -46,11 +58,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
     }
     else
     {
-        //pick best:
-
-        //need to pick maximum true action..
-
-        //map true_action indexs to q_row
+        // pick best action
         for (int i = 0; i < true_actions.size();i++)
         {
             q_row_true.push_back(q_row[true_actions[i]]);//get true q values
@@ -58,7 +66,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
 
         max_q = *std::max_element(q_row_true.begin(),q_row_true.end());
 
-        //check for multiple times if actions have true max value
+        //check for multiple best actions
         for (int i = 0; i < q_row_true.size();i++)
         {
             if (max_q == q_row_true[i])
@@ -67,7 +75,7 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
             }
         }
 
-        //randomly pick if there are more than one option
+        //randomly pick if there are more than one best action
         if (max_indexs.size() == 1)
         {
             return true_actions[max_indexs[0]];
@@ -75,7 +83,6 @@ char q_learning::choose_action(float epsilon, std::vector<bool> available_action
         else if (max_indexs.size() > 1)
         {
             random_choice = rand()%(max_indexs.size());
-     //       std::cout<<"Random choice for picking best action is "<<random_choice<<std::endl;
             return true_actions[max_indexs[random_choice]];
         }
     }

@@ -1,25 +1,35 @@
-#include "cliff_world.h"
+#include "gridWorld.hpp"
+
 #include <cmath>
 
-cliff_world::cliff_world()
+/**
+    Constructor
+*/
+gridWorld::gridWorld()
     :Q(STATES, std::vector<float>(ACTIONS,0)) //create states rows and actions columns
 {
 
 }
 
-cliff_world::~cliff_world()
+/**
+    Destructor
+*/
+gridWorld::~gridWorld()
 {
 
 }
 
-std::vector<bool> cliff_world::available_actions(char s)
+/**
+    Return a vector of booleans for the actions available for the agent to take. 
+    The agent cannot go beyond the grid's boards.
+    N, E, S, W is the order of actions
+*/
+std::vector<bool> gridWorld::availableActions(char s)
 {
-    //check boundaries. true for available action in that direction.
-    // N, E, S, W is the order of actions
     std::vector<bool> actions(4, false);
     char s_x, s_y;
 
-    //get each digit
+    //get each digit of the agents state
     if (s >= 10)
     {
         s_x = s / 10;
@@ -71,7 +81,10 @@ std::vector<bool> cliff_world::available_actions(char s)
     return actions;
 }
 
-char cliff_world::take_action(char action, char current_state)
+/**
+    Returns the state from taking the action
+*/
+char gridWorld::takeAction(char action, char current_state)
 {
     char delta_state;
     if (action == 0)
@@ -93,67 +106,72 @@ char cliff_world::take_action(char action, char current_state)
     return (current_state + delta_state);
 }
 
-char cliff_world::next_state(char action, char current_state, std::vector<bool> available_actions)
+/**
+    Return the next state from taking an action in the current state. 
+    This method takes into account noisy state transistions. This means that the action taken has a 
+    probability of NOISEY_TRANS_PROB to leading to an incorrect next state. 
+*/
+char gridWorld::nextState(char action, char current_state, std::vector<bool> availableActions)
 {
-    // return the next state. take into account noisy transition probabilities
-    //the chosen action will always have 80 % of resolving in the correct state. the remaining
-    //avaliable options are divided equally and are chosen randomly if a random number is less than 20%...
-
-    //get amount of available actions
     char noisey_idx,actual_next_state ;
     std::vector<int> available_idx;
     float next_state_probs;
 
     next_state_probs = fabs((rand()/(float)(RAND_MAX + 1)));    //random positive float between 0 and 1
 
-    if (next_state_probs > 0.1)
+    if (next_state_probs > NOISEY_TRANS_PROB/100)
     {
         //next state is not acted by noise
-        actual_next_state = cliff_world::take_action(action, current_state);
+        actual_next_state = gridWorld::takeAction(action, current_state);
         return actual_next_state;
     }
     else
     {
-        //next state is noisy. pick other actions randomly
-        //noisey_idx = rand()%(available_actions.size());
-        //std::cout<<available_actions.size()<<std::endl;
-        for (int i = 0; i < available_actions.size();i++)
+        //next state is noisy. pick other true actions randomly and take that 
+        for (int i = 0; i < availableActions.size();i++)
         {
-            if (available_actions[i] == true)
+            if (availableActions[i] == true)
             {
                 available_idx.push_back(i);
             }
         }
         noisey_idx = rand()%(available_idx.size());
         action = available_idx[noisey_idx];
-        actual_next_state = cliff_world::take_action(action, current_state);
+        actual_next_state = gridWorld::takeAction(action, current_state);
         return actual_next_state;
     }
 }
 
-signed short int cliff_world::get_reward(char next_state)
+/**
+    Return the reward for the agents state transitions    
+*/
+signed short int gridWorld::getReward(char next_state)
 {
     signed short int reward;
 
     //punish for moving into obstacles
-    if (next_state == 10 || next_state == 20)
+    if (next_state == OBSTACLE_1_STATE || next_state == OBSTACLE_2_STATE)
     {
-        reward = -1000;
+        reward = PUNISHMENT;
     }
     //reward for moving into goal
-    else if (next_state == 30)
+    else if (next_state == GOAL_STATE)
     {
-        reward = 1000;
+        reward = REWARD;
     }
+    // slightly punish for state transition
     else
     {
-        reward = 0;
+        reward = STATE_TRANSITION_COST;
     }
     return reward;
 
 }
 
-char cliff_world::get_state_index(char state)
+/**
+    Return the state index
+*/
+char gridWorld::getStateIndex(char state)
 {
     char state_index;
     if(state == 0){

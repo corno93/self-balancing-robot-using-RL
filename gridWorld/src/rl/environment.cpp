@@ -1,3 +1,8 @@
+/**
+	Environment class methods. All are virtual and will be implemented by derived classes
+	@author Alex Cornelio
+*/
+
 #include "environment.h"
 
 environment::environment()
@@ -9,22 +14,22 @@ environment::~environment()
 
 }
 
-std::vector<bool> environment::available_actions(char s)
+std::vector<bool> environment::availableActions(char s)
 {
 
 }
 
-char environment::take_action(char action, char current_state)
+char environment::takeAction(char action, char current_state)
 {
 
 }
 
-char environment::next_state(char action, char current_state,std::vector<bool> availiable_actions)
+char environment::nextState(char action, char current_state,std::vector<bool> availiable_actions)
 {
 
 }
 
-signed short int environment::get_reward(char next_state)
+signed short int environment::getReward(char next_state)
 {
 
 }

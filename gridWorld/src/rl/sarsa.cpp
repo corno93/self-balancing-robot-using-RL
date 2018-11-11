@@ -1,5 +1,10 @@
-#include "sarsa.h"
-#include "environment.h"
+/**
+    SARSA class methods
+    @author Alex Cornelio
+*/
+
+#include "sarsa.hpp"
+#include "environment.hpp"
 #include <algorithm>
 
 
@@ -13,7 +18,7 @@ sarsa::~sarsa()
 
 }
 
-char sarsa::choose_action(float epsilon, std::vector<bool> available_actions, std::vector<float> state_row)
+char sarsa::chooseAction(float epsilon, std::vector<bool> available_actions, std::vector<float> state_row)
 {
     float random_num;
     int random_choice, random_action;
