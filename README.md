@@ -1,6 +1,13 @@
 # self-balancing-robot-using-RL
 
-This repository contains all the source code used throughout my under-graduate thesis for the degree of a Bachelor of Mechatronic engineering at The University of Sydney. The thesis was titled 'Balancing a Two Wheeled Robot with Reinforcement Learning' that has an aim of creating an insight for using Reinforcement Learning (RL) algorithms in the field of robotic actuated control systems. This thesis consisted of the design and development of a two-wheeled robot using ROS as its software archieture as well as three experiments:
+## Overview
+This repository contains all the source code used throughout my under-graduate thesis for the degree of a Bachelor of Mechatronic engineering at The University of Sydney. The thesis was titled 'Balancing a Two Wheeled Robot with Reinforcement Learning' that has an aim of creating an insight for using Reinforcement Learning (RL) algorithms in the field of robotic actuated control systems. This thesis consisted of the design and development of a two-wheeled robot using ROS as its software archieture as well as three experiments to validate the use of RL algorithms for robotic actuation.
+
+All code has been written in C++ with exception of a few python scripts. 
+For more details on this work, the thesis can be found [here](https://drive.google.com/open?id=0Bz08ndGq8YoiUlNWRVNkRlVtTEk). 
+
+## Experiements
+The three experiements undergone include:
 
 - **Grid world**:
 Here RL algorithms Q-Learning and SARSA (state-action-reward-state-action) are tested in a grid world environment. The grid world environment simply consists of a grid n by n in size, an agent, a goal state and a reward for each state transition. The agent uses the RL algorithm to build an optimal value function whereby it will reach the goal state as quickly as possible. The reason for this experiment was to write these algorithms in C++ in a simple environment and to develop a thorough understanding of them before implementing them in more complex scenarious. 
@@ -16,12 +23,8 @@ Please see the directory gazeboSimulation.
 
 - **Robot**:
 Now the algorithms are finally tested on the built robot. 
-
 Please see the directory robot.
 
-
-All code has been written in C++ with exception of a few python scripts. 
-For more details on this work, the thesis can be found [here](https://drive.google.com/open?id=0Bz08ndGq8YoiUlNWRVNkRlVtTEk). 
 
 
 ## Long story short:
