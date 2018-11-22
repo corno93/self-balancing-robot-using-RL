@@ -6,8 +6,8 @@ This repository contains all the source code used throughout my under-graduate t
 All code has been written in C++ with exception of a few python scripts. 
 For more details on this work, the thesis can be found [here](https://drive.google.com/open?id=0Bz08ndGq8YoiUlNWRVNkRlVtTEk). 
 
-## Experiements
-The three experiements undergone include:
+## Experiments
+The three experiments undergone include:
 
 - **Grid world**:
 Here RL algorithms Q-Learning and SARSA (state-action-reward-state-action) are tested in a grid world environment. The grid world environment simply consists of a grid n by n in size, an agent, a goal state and a reward for each state transition. The agent uses the RL algorithm to build an optimal value function whereby it will reach the goal state as quickly as possible. The reason for this experiment was to write these algorithms in C++ in a simple environment and to develop a thorough understanding of them before implementing them in more complex scenarious. 
@@ -18,7 +18,6 @@ Here the RL algorithms are compared against the traditional PID algorithm in ach
     - Terrain test. The simulation provides a flat and a rocky terrain environment.
     - Robustness test. A large disturbance force is inputted onto the chassis.
     - Adaptability test. The simulated robot will have a significant change in its mass and weigth distribution. 
-
 Please see the directory gazeboSimulation.
 
 - **Robot**:

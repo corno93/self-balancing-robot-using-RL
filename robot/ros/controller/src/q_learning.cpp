@@ -35,19 +35,21 @@
 #include <cmath>
 #include <algorithm>
 
-//uses the gazebo sim model
+//params for q-learning
 #define EPSILON 0.6
 #define ALPHA 0.6
 #define GAMMA 0.6
 
-#define FREQUENCY 25
-#define RL_DELTA 0.04
+#define FREQUENCY 50
+#define RL_DELTA 0.02
 #define STOP_RPM 0
+#define REFERENCE_PITCH 0
 
-#define PITCH_FIX 5.5
-#define REFERENCE_PITCH -1.0
+// fix imu angled offset
+#define PITCH_FIX 5.5 
+// maximum pitch angle for the robot to stop
+#define PITCH_THRESHOLD 6
 
-#define PITCH_THRESHOLD 6.5
 #define ACTIONS 7
 #define ACTIONS_HALF 3
 #define ACTION_BIAS 3
@@ -412,7 +414,6 @@ char QLearning::choose_action(char curr_state)
 	{
 		// explore
 		random_choice = rand()%(ACTIONS_HALF) + position_bias;
-		ROS_INFO("random action choice: %d", random_choice);
 		msg.random_action = random_choice;
 		return random_choice;
 	}
