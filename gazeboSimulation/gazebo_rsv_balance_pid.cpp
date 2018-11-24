@@ -20,7 +20,6 @@
 
 #include <ros/ros.h>
 #include <sdf/sdf.hh>
-//#include "gazebo_rsv_balance/pid.h"
 
 
 #define PID_DELTA 0.05
@@ -32,8 +31,6 @@ int time_step = 0;
 float integral_sum = 0;
 float error_prev = 0;
 float kp = 5, ki = 0.5, kd = 0.2;
-//gazebo::common:Time restart_delta;
-//gazebo::common:Time restart_delta_prev;
 
 
 namespace gazebo

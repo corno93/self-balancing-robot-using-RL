@@ -30,36 +30,12 @@
 
 // 2D state space
 #define STATE_NUM 9
-#define REWARD_1 4
-#define REWARD_2 12
-#define REWARD_3 20
-#define REWARD_4 28
 char phi_states[STATE_NUM] = {-9, -6, -3, -1.5, 0, 1.5, 3, 6, 9};
 char phi_d_states[STATE_NUM] = {-30,-20, -10,-5, 0, 5, 10, 20,30};
-char reward_1[4] = {44, 45, 54, 55};
-char reward_2[12] = {33, 34, 35, 36, 43, 46, 53, 56, 63, 64, 65, 66};
-char reward_3[20] = {22, 23, 24, 25, 26, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72,73,74,75,76,77};
-char reward_4[28] = {11,12,13,14,15,16,17,18,21,28,31,38,41,48,51,58,61,68,71,78,81,82,83,84,85,86,87,88};
 
 
 
-const float A_model[6][6] = {
-  {0, 1, 0, 0, 0, 0},
-  {0, 0, -12.2988, 0, -0.0111, -0.0111},
-  {0, 0, 0, 1, 0, 0 },
-  {0, 0, 205.8717, 0, -41.1946, -41.1946},
-  {0, -0.0001, 0, 0, 0, 0},
-  {0, -0.0001, 0, 0, 0, 0}};
-
-const float B_model[6][1] = {
-  {0},
-  {0},
-  {0},
-  {0},
-  {0.0322},
-  {0.0322}};
-
-
+// TODO: put this in other cpp and hpp files
 class reinforcement_learning
 {
   public:
@@ -251,28 +227,23 @@ char q_learning::choose_action(char curr_state)
   float random_num;
   float max_q;
   int action_choice;
- // std::vector<float> q_row;
- // std::vector<int> max_value_idxs;
 
   random_num = fabs((rand()/(float)(RAND_MAX)));	//random num between 0 and 1
-  //ROS_INFO("random num: %f", random_num);
+
 
   
   if (random_num < epsilon)
   {
     //pick randomly
     random_choice = rand()%ACTIONS;
-    //ROS_INFO("random choice: %d", random_choice);
     return random_choice;
   }
   else
   {
     //pick best
-    //ROS_INFO("picks best");
     this->q_row = Q[curr_state];
 
     max_q = *std::max_element(q_row.begin(), q_row.end());
-//    ROS_INFO("max_q: %f", max_q);    
     for (int i = 0; i < q_row.size(); i++)
       {
         if (max_q == q_row[i])
@@ -283,7 +254,6 @@ char q_learning::choose_action(char curr_state)
     if (max_value_idxs.size() == 1)
       {
 	action_choice = max_value_idxs[0];
-	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
         max_value_idxs.clear();
 	return max_value_idxs[0];
       }
@@ -776,8 +746,6 @@ void GazeboRsvBalance::UpdateChild()
 		controller.loses++;
 		controller.msg.loses = controller.loses;
 	}
-	// move to that next state
-//	curr_state = next_state;//MAYBE NOT...	
 
 	//pitch dot
 	controller.pitch_dot = (controller.pitch - controller.prev_pitch)/RL_DELTA;
