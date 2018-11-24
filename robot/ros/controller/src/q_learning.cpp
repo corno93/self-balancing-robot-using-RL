@@ -2,7 +2,7 @@
 	This script is the high level Q-learning control loop. 
 	From subscribing to the imu/data topic the robot knows what state it is in (pitch angle and pitch angle velocity).
 	The robot then trys to learn an optimal value function that aims to achieve stabilisation by 
-	playing around with rpm actions and receiving rewards. 
+	playing around with rpm actions and receiving rewards.  
 
 	@author Alex Cornelio
 
