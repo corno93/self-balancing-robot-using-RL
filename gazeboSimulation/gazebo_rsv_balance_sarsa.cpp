@@ -2,11 +2,9 @@
  *  Copyright (c) 2015 Robosavvy Ltd.
  *  Author: Vitor Matos
  *
- *  Based on diff_drive_plugin
  *
- *  MODIFICATION: 
- *  - control segway about pitch angle using a RL SARSA controller
-
+ *  Modifications made by Alex Cornelio: 
+ *  - control segway about pitch angle using a SARSA controller
  *********************************************************************/
 
 #include "gazebo_rsv_balance/gazebo_rsv_balance.h"
@@ -22,13 +20,13 @@
 #include <cmath>
 #include <algorithm>
 
-#define REFERENCE_PITCH 2.2
-#define PITCH_THRESHOLD 5.5 //lower bound -1.5
+#define REFERENCE_PITCH 0.0
+#define PITCH_THRESHOLD 5.5 
 #define RL_DELTA 0.04
 #define FREQ 25
 #define ACTIONS 7
-//char actions[ACTIONS] = {-30,-10,0,10,30};
-char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	//torque of 3 recovers falling robot at 3 degreees
+
+char actions[ACTIONS] = {-53, -26, -13, 0, 13, 26, 53};	
 #define WHEEL_RADIUS 0.19
 #define MAX_EPISODE 40
 
@@ -39,7 +37,7 @@ float phi_states[STATE_NUM_PHI] = { -1, 0, 1, 1.5, 2, 2.5, 3, 4, 5};
 float phi_d_states[STATE_NUM_PHI_D] = {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5};
 
 
-
+// TODO: put this in another cpp and hpp file
 class reinforcement_learning
 {
   public:
@@ -68,7 +66,6 @@ class reinforcement_learning
     char virtual choose_action(char) = 0;
     void TD_update(char, char, char, char, float);
     char get_state(float, float);
-    //char get_next_state(float,float, char);
     float get_reward(char);
 };
 
@@ -160,48 +157,7 @@ char reinforcement_learning::get_state(float pitch, float pitch_dot)
 
 
 
-/*char reinforcement_learning::get_next_state(float pitch, float pitch_dot, char action_idx)
-{
-  float x_current[6][1] = {
-    {0},
-    {0},
-    {pitch},
-    {pitch_dot},
-    {-actions[action_idx]},
-    {actions[action_idx]}};
-
-  char next_state;
-  const char u = 1;
-  float A_x_current[6][1];
-  float x_next[6][1];
-  float next_pitch;
-  float next_pitch_dot;
-  // A*x_current
-  for (int i = 1; i < 6; i++)
-  {
-    for (int j = 1; j < 6; j++)
-      {
-        A_x_current[i][0]+= A_model[i][j] * x_current[j][0];
-      }
-  } 
-  //x_current + (A*current + B*u)*dt
-  for (int i = 1; i < 6; i ++)
-  {
-    x_next[i][0] = x_current[i][0] + (A_x_current[i][0] + B[i][0])*RL_DELTA;
-  }
- 
-  next_pitch = x_next[2][0];
-  next_pitch_dot = x_next[3][0];
-  std::cout<<"next pitch"<<next_pitch<<std::endl;
-  std::cout<<"next pd " <<next_pitch_dot<<std::endl;
-  msg.next_pitch = next_pitch;
-  msg.next_pitch_dot = next_pitch_dot;
-  next_state = get_state(next_pitch, next_pitch_dot);  
-
-  return next_state;
-
-}*/
-
+// TODO: put this in another cpp and hpp file
 class sarsa: public reinforcement_learning
 {
   public:
@@ -264,7 +220,7 @@ char sarsa::choose_action(char curr_state)
     if (max_value_idxs.size() == 1)
       {
 	action_choice = max_value_idxs[0];
-	//std::fill(max_value_idxs.being(), max_value_idxs.end(),0);
+
         max_value_idxs.clear();
 	return action_choice;
       }
@@ -273,11 +229,7 @@ char sarsa::choose_action(char curr_state)
 	ROS_INFO("max_value_dx 0 is: %d", max_value_idxs[0]);
 	action_choice = max_value_idxs[0];
 	max_value_idxs.clear();
-//	ROS_INFO("random choice for repeated bests");
-//	ROS_INFO("size: %d", max_value_idxs.size());
-//        action_choice = rand()%(max_value_idxs.size());
-//	max_value_idxs.clear();
-//	ROS_INFO("rnadom choice is: %d", action_choice);
+
         return action_choice;
       }
   }
@@ -654,141 +606,6 @@ void GazeboRsvBalance::Reset()
   this->feedback_v_ = 0;
   this->feedback_w_ = 0;
 }
-
-void GazeboRsvBalance::publishQstate()
-{
-  rsv_balance_msgs::Q_state q_msg;
-  ros::Time current_time = ros::Time::now();
-  for (int i = 0; i < ACTIONS; i++)
-  {
-    q_msg.state0[i] = controller.Q[0][i];
-    q_msg.state1[i] = controller.Q[1][i];
-    q_msg.state2[i] = controller.Q[2][i];
-    q_msg.state3[i] = controller.Q[3][i];
-    q_msg.state4[i] = controller.Q[4][i];
-    q_msg.state5[i] = controller.Q[5][i];
-    q_msg.state6[i] = controller.Q[6][i];
-    q_msg.state7[i] = controller.Q[7][i];
-    q_msg.state8[i] = controller.Q[8][i];
-    q_msg.state9[i] = controller.Q[9][i];
-    q_msg.state10[i] = controller.Q[10][i];
-    q_msg.state11[i] = controller.Q[11][i];
-    q_msg.state12[i] = controller.Q[12][i];
-    q_msg.state13[i] = controller.Q[13][i];
-    q_msg.state14[i] = controller.Q[14][i];
-    q_msg.state15[i] = controller.Q[15][i];
-    q_msg.state16[i] = controller.Q[16][i];
-    q_msg.state17[i] = controller.Q[17][i];
-    q_msg.state18[i] = controller.Q[18][i];
-    q_msg.state19[i] = controller.Q[19][i];
-    q_msg.state20[i] = controller.Q[20][i];
-    q_msg.state21[i] = controller.Q[21][i];
-    q_msg.state22[i] = controller.Q[22][i];
-    q_msg.state23[i] = controller.Q[23][i];
-    q_msg.state24[i] = controller.Q[24][i];
-    q_msg.state25[i] = controller.Q[25][i];
-    q_msg.state26[i] = controller.Q[26][i];
-    q_msg.state27[i] = controller.Q[27][i];
-    q_msg.state28[i] = controller.Q[28][i];
-    q_msg.state29[i] = controller.Q[29][i];
-    q_msg.state30[i] = controller.Q[30][i];
-    q_msg.state31[i] = controller.Q[31][i];
-    q_msg.state32[i] = controller.Q[32][i];
-    q_msg.state33[i] = controller.Q[33][i];
-    q_msg.state34[i] = controller.Q[34][i];
-    q_msg.state35[i] = controller.Q[35][i];
-    q_msg.state36[i] = controller.Q[36][i];
-    q_msg.state37[i] = controller.Q[37][i];
-    q_msg.state38[i] = controller.Q[38][i];
-    q_msg.state39[i] = controller.Q[39][i];
-    q_msg.state40[i] = controller.Q[40][i];
-    q_msg.state41[i] = controller.Q[41][i];
-    q_msg.state42[i] = controller.Q[42][i];
-    q_msg.state43[i] = controller.Q[43][i];
-    q_msg.state44[i] = controller.Q[44][i];
-    q_msg.state45[i] = controller.Q[45][i];
-    q_msg.state46[i] = controller.Q[46][i];
-    q_msg.state47[i] = controller.Q[47][i];
-    q_msg.state48[i] = controller.Q[48][i];
-    q_msg.state49[i] = controller.Q[49][i];
-    q_msg.state50[i] = controller.Q[50][i];
-    q_msg.state51[i] = controller.Q[51][i];
-    q_msg.state52[i] = controller.Q[52][i];
-    q_msg.state53[i] = controller.Q[53][i];
-    q_msg.state54[i] = controller.Q[54][i];
-    q_msg.state55[i] = controller.Q[55][i];
-    q_msg.state56[i] = controller.Q[56][i];
-    q_msg.state57[i] = controller.Q[57][i];
-    q_msg.state58[i] = controller.Q[58][i];
-    q_msg.state59[i] = controller.Q[59][i];
-    q_msg.state60[i] = controller.Q[60][i];
-    q_msg.state61[i] = controller.Q[61][i];
-    q_msg.state62[i] = controller.Q[62][i];
-    q_msg.state63[i] = controller.Q[63][i];
-    q_msg.state64[i] = controller.Q[64][i];
-    q_msg.state65[i] = controller.Q[65][i];
-    q_msg.state66[i] = controller.Q[66][i];
-    q_msg.state67[i] = controller.Q[67][i];
-    q_msg.state68[i] = controller.Q[68][i];
-    q_msg.state69[i] = controller.Q[69][i];
-    q_msg.state70[i] = controller.Q[70][i];
-    q_msg.state71[i] = controller.Q[71][i];
-    q_msg.state72[i] = controller.Q[72][i];
-    q_msg.state73[i] = controller.Q[73][i];
-    q_msg.state74[i] = controller.Q[74][i];
-    q_msg.state75[i] = controller.Q[75][i];
-    q_msg.state76[i] = controller.Q[76][i];
-    q_msg.state77[i] = controller.Q[77][i];
-    q_msg.state78[i] = controller.Q[78][i];
-    q_msg.state79[i] = controller.Q[79][i];
-    q_msg.state80[i] = controller.Q[80][i];
-    q_msg.state81[i] = controller.Q[81][i];
-    q_msg.state82[i] = controller.Q[82][i];
-    q_msg.state83[i] = controller.Q[83][i];
-    q_msg.state84[i] = controller.Q[84][i];
-    q_msg.state85[i] = controller.Q[85][i];
-    q_msg.state86[i] = controller.Q[86][i];
-    q_msg.state87[i] = controller.Q[87][i];
-    q_msg.state88[i] = controller.Q[88][i];
-    q_msg.state89[i] = controller.Q[89][i];
-    q_msg.state90[i] = controller.Q[90][i];
-    q_msg.state91[i] = controller.Q[91][i];
-    q_msg.state92[i] = controller.Q[92][i];
-    q_msg.state93[i] = controller.Q[93][i];
-    q_msg.state94[i] = controller.Q[94][i];
-    q_msg.state95[i] = controller.Q[95][i];
-    q_msg.state96[i] = controller.Q[96][i];
-    q_msg.state97[i] = controller.Q[97][i];
-    q_msg.state98[i] = controller.Q[98][i];
-    q_msg.state99[i] = controller.Q[99][i];
-    q_msg.state100[i] = controller.Q[100][i];
-    q_msg.state101[i] = controller.Q[101][i];
-    q_msg.state102[i] = controller.Q[102][i];
-    q_msg.state103[i] = controller.Q[103][i];
-    q_msg.state104[i] = controller.Q[104][i];
-    q_msg.state105[i] = controller.Q[105][i];
-    q_msg.state106[i] = controller.Q[106][i];
-    q_msg.state107[i] = controller.Q[107][i];
-    q_msg.state108[i] = controller.Q[108][i];
-    q_msg.state109[i] = controller.Q[109][i];
-    q_msg.state110[i] = controller.Q[110][i];
-    q_msg.state111[i] = controller.Q[111][i];
-    q_msg.state112[i] = controller.Q[112][i];
-    q_msg.state113[i] = controller.Q[113][i];
-    q_msg.state114[i] = controller.Q[114][i];
-    q_msg.state115[i] = controller.Q[115][i];
-    q_msg.state116[i] = controller.Q[116][i];
-    q_msg.state117[i] = controller.Q[117][i];
-    q_msg.state118[i] = controller.Q[118][i];
-    q_msg.state119[i] = controller.Q[119][i];
-
-
- } 
-// publish important data
-  this->Q_state_publisher_.publish(q_msg);
-
-}
-
 
 
 /*!
