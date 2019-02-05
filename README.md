@@ -4,7 +4,7 @@
 This repository contains all the source code used throughout my under-graduate thesis for the degree of a Bachelor of Mechatronic engineering at The University of Sydney. The thesis was titled 'Balancing a Two Wheeled Robot with Reinforcement Learning' that has an aim of creating an insight for using Reinforcement Learning (RL) algorithms in the field of robotic actuated control systems. This thesis consisted of the design and development of a two-wheeled robot using ROS as its software archieture as well as three experiments to validate the use of RL algorithms for robotic actuation.
 
 All code has been written in C++ with exception of a few python scripts. 
-For more details on this work, the thesis can be found [here](https://drive.google.com/open?id=0Bz08ndGq8YoiUlNWRVNkRlVtTEk). 
+For more details on this work, the thesis can be found [here](https://drive.google.com/file/d/1MVEZyo-GdvuNdoyFfX_ztGe7zIYsXT4Z/view?usp=sharing). 
 
 ## Experiments
 The three experiments undergone include:
